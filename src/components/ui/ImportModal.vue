@@ -150,6 +150,7 @@ function handleImport() {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background: var(--bg-surface);
 }
 
 .import-textarea {
