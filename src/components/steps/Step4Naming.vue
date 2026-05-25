@@ -84,20 +84,12 @@ function autoAssignRoles() {
     pick('background', c => chroma(c.hex).get('oklch.l'))
     pick('text-primary', c => -chroma(c.hex).get('oklch.l'))
   }
-  const bgColor = cs.find(c => c.roles.includes('background'))
-  if (bgColor) {
-    const bgL = chroma(bgColor.hex).get('oklch.l')
-    pick('surface', c => -Math.abs(chroma(c.hex).get('oklch.l') - bgL))
-  } else {
-    pick('surface', c => darkMode ? -chroma(c.hex).get('oklch.l') : chroma(c.hex).get('oklch.l'))
-  }
+   cs.forEach(c => { if (!pool.includes(c)) pool.push(c) })
 
-  cs.forEach(c => { if (!pool.includes(c)) pool.push(c) })
-
-  pick('primary', c => chroma(c.hex).get('hsl.s'))
-  pick('error', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 0))
-  pick('success', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 120))
-  pick('warning', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 60))
+   pick('primary', c => chroma(c.hex).get('hsl.s'))
+   pick('error', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 0))
+   pick('success', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 120))
+   pick('warning', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 60))
 }
 </script>
 
@@ -109,6 +101,7 @@ function autoAssignRoles() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 28px;
 }
 
 .naming-actions {

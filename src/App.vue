@@ -156,7 +156,7 @@ function autoAssignRoles() {
 <style scoped>
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100svh;
   background-color: var(--bg-base);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -175,7 +175,7 @@ function autoAssignRoles() {
     flex: 1;
     overflow-y: auto;
     padding: 32px;
-    padding-bottom: 96px;
+    margin-bottom: 64px;
   }
 
 @media (max-width: 768px) {
