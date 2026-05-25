@@ -186,6 +186,7 @@ async function pickEditColor() {
 
 .modal-body {
   padding: 16px;
+  background: var(--bg-surface);
 }
 
 .modal-info-grid {
