@@ -181,20 +181,33 @@ export function generateTonalScaleOKLCH(hex: string, steps = 9): TonalScaleResul
 
 export function generateName(hex: string, roles: string[]): string {
   if (roles.length > 0) {
-    const [, , l] = getHSL(hex)
+    const l = chroma(hex).get('oklch.l')
     const role = roles[0]
-    if (l > 0.85) return `${role}-50`
-    if (l > 0.7) return `${role}-100`
-    if (l > 0.55) return `${role}-200`
-    if (l > 0.4) return `${role}-300`
-    if (l > 0.3) return `${role}-400`
-    if (l > 0.2) return `${role}-500`
-    if (l > 0.12) return `${role}-600`
-    if (l > 0.07) return `${role}-700`
-    if (l > 0.03) return `${role}-800`
+    if (l > 0.92) return `${role}-50`
+    if (l > 0.82) return `${role}-100`
+    if (l > 0.70) return `${role}-200`
+    if (l > 0.58) return `${role}-300`
+    if (l > 0.46) return `${role}-400`
+    if (l > 0.35) return `${role}-500`
+    if (l > 0.25) return `${role}-600`
+    if (l > 0.15) return `${role}-700`
+    if (l > 0.08) return `${role}-800`
     return `${role}-900`
   }
-  return hex.toLowerCase()
+  try {
+    const h = chroma(hex).get('oklch.h')
+    const hueDeg = (isNaN(h) ? 0 : h + 360) % 360
+    if (hueDeg < 15 || hueDeg >= 345) return 'red'
+    if (hueDeg < 35) return 'orange'
+    if (hueDeg < 65) return 'yellow'
+    if (hueDeg < 150) return 'green'
+    if (hueDeg < 200) return 'teal'
+    if (hueDeg < 260) return 'blue'
+    if (hueDeg < 330) return 'purple'
+    return 'pink'
+  } catch {
+    return hex.toLowerCase()
+  }
 }
 
 export function getAverageHue(colors: ColorEntry[]): number {

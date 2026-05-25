@@ -21,7 +21,7 @@
     <nav class="sidebar-nav">
       <div class="nav-label">Workflow</div>
       <button
-        v-for="step in wizard.steps"
+        v-for="step in visibleSteps"
         :key="step.id"
         class="sidebar-step"
         :class="{
@@ -49,22 +49,6 @@
 
     <div class="sidebar-spacer" />
 
-    <!-- Health Score -->
-    <div class="sidebar-health">
-      <div class="health-header">
-        <span class="health-label">Palette Health</span>
-        <span class="health-score" :style="{ color: healthColor }">{{ healthScore }}%</span>
-      </div>
-      <div class="health-bar-track">
-        <div
-          class="health-bar-fill"
-          :style="{ width: healthScore + '%', background: healthColor }"
-        />
-      </div>
-    </div>
-
-    <div class="sidebar-divider" />
-
     <!-- Bottom Controls -->
     <div class="sidebar-bottom">
       <!-- Color count -->
@@ -73,28 +57,16 @@
         <span>{{ palette.colors.length }} colors</span>
       </div>
 
-      <!-- Dark/Light Toggle -->
-      <button class="theme-toggle" @click="themeStore.toggle()" :title="themeStore.isDark ? 'Switch to Light' : 'Switch to Dark'">
-        <span class="toggle-track" :class="{ light: !themeStore.isDark }">
-          <span class="toggle-thumb">
-            <svg v-if="themeStore.isDark" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-            <svg v-else width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          </span>
-        </span>
-        <span class="toggle-label">{{ themeStore.isDark ? 'Dark' : 'Light' }}</span>
-      </button>
+      <div class="sidebar-actions">
+        <button class="sidebar-action-btn" @click="savePalette" title="Save palette to localStorage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Palette
+        </button>
+        <button class="sidebar-action-btn" @click="downloadPalette" title="Download palette as JSON">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -103,19 +75,37 @@
 import { computed } from 'vue'
 import { useWizardStore } from '../../stores/wizard'
 import { usePaletteStore } from '../../stores/palette'
-import { useThemeStore } from '../../stores/theme'
-import { usePaletteAnalysis } from '../../composables/usePaletteAnalysis'
 
 const wizard = useWizardStore()
 const palette = usePaletteStore()
-const themeStore = useThemeStore()
-const { healthScore } = usePaletteAnalysis(() => palette.colors, () => themeStore.isDark)
 
-const healthColor = computed(() => {
-  if (healthScore.value >= 80) return 'var(--success)'
-  if (healthScore.value >= 60) return 'var(--warning)'
-  return 'var(--error)'
-})
+const visibleSteps = computed(() => wizard.steps.filter(s => s.id !== 3))
+
+function savePalette() {
+  const data = JSON.stringify(palette.colors.map(c => ({
+    hex: c.hex,
+    name: c.name,
+    roles: c.roles,
+    locked: c.locked,
+  })))
+  localStorage.setItem('chromaforge-current', data)
+}
+
+function downloadPalette() {
+  const data = JSON.stringify(palette.colors.map(c => ({
+    hex: c.hex,
+    name: c.name,
+    roles: c.roles,
+    locked: c.locked,
+  })), null, 2)
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `chromaforge-palette-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 </script>
 
 <style scoped>
@@ -301,41 +291,6 @@ const healthColor = computed(() => {
   flex: 1;
 }
 
-.sidebar-health {
-  padding: 12px 16px;
-}
-
-.health-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.health-label {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.health-score {
-  font-size: 13px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.health-bar-track {
-  height: 4px;
-  background: var(--bg-subtle);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.health-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
-}
 
 .sidebar-bottom {
   padding: 12px 16px 16px;
@@ -350,6 +305,38 @@ const healthColor = computed(() => {
   gap: 6px;
   font-size: 11px;
   color: var(--text-tertiary);
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sidebar-action-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+}
+
+.sidebar-action-btn svg {
+  flex-shrink: 0;
 }
 
 .meta-dot {

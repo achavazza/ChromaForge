@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import type { ColorEntry } from '../stores/palette'
 import {
   getLuminance, getSaturation,
-  getColorTemperature, desaturate, mix, getContrastRatio
+  getColorTemperature, getContrastRatio
 } from './useColorUtils'
 import chroma from 'chroma-js'
 
@@ -378,23 +378,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // Suggest neutral — true grey based on average palette luminance
-    if (!roles.has('neutral') && !roles.has('neutral-dark') && !roles.has('neutral-light')) {
-      const mode = shuffleModes.value.get('suggest-neutral') || 'split'
-      const avgLum = cs.reduce((sum, c) => sum + getLuminance(c.hex), 0) / cs.length
-      const greyBase = avgLum > 0.4 ? '#6b7280' : '#9ca3af'
-      const neutralHex = applyMode(greyBase, mode)
-      result.push({
-        id: 'suggest-neutral',
-        hex: neutralHex,
-        role: 'neutral',
-        title: 'Add a Neutral Color',
-        explanation: 'A true neutral grey balanced to your palette\'s overall luminance for harmonious neutrals.',
-        accessibilityImpact: 'Improves readability of secondary text, borders, and backgrounds.',
-        baseHex: greyBase,
-      })
-    }
-
     // Suggest text color — derived from background (light bg → dark text, dark bg → light text)
     const hasTextColor = roles.has('text-primary') || roles.has('text-secondary')
     if (!hasTextColor && bg) {
@@ -413,42 +396,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
         accessibilityImpact: 'Fundamental for readable content across your UI.',
         baseHex: bg.hex,
       })
-    }
-
-    // Suggest tonal bridge
-    const lightColors = cs.filter(c => getLuminance(c.hex) > 0.6)
-    const darkColors = cs.filter(c => getLuminance(c.hex) < 0.1)
-    if (lightColors.length > 0 && darkColors.length > 0) {
-      const mode = shuffleModes.value.get('suggest-bridge') || 'split'
-      const mid = mix(lightColors[0].hex, darkColors[0].hex, 0.5)
-      const bridgeHex = applyMode(mid, mode)
-      result.push({
-        id: 'suggest-bridge',
-        hex: bridgeHex,
-        role: 'muted',
-        title: 'Add a Tonal Bridge',
-        explanation: 'A mid-tone that smoothly connects your light and dark extremes.',
-        accessibilityImpact: 'Muted tones reduce visual jump between contrasting regions.',
-        baseHex: lightColors[0].hex,
-      })
-    }
-
-    // Suggest text-secondary
-    if (!roles.has('text-secondary')) {
-      const textPrimary = cs.find(c => c.roles.includes('text-primary'))
-      if (textPrimary) {
-        const mode = shuffleModes.value.get('suggest-text-secondary') || 'split'
-        const mutedTextHex = applyMode(desaturate(textPrimary.hex, 1), mode)
-        result.push({
-          id: 'suggest-text-secondary',
-          hex: mutedTextHex,
-          role: 'text-secondary',
-          title: 'Add Secondary Text Color',
-          explanation: 'A softer text tone for labels, captions, and supporting content.',
-          accessibilityImpact: 'Establishes text hierarchy while maintaining readability.',
-          baseHex: textPrimary.hex,
-        })
-      }
     }
 
     return result

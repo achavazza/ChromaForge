@@ -13,6 +13,7 @@
         </Transition>
       </div>
     </main>
+    <SidebarAnalysis />
     <GlobalPaletteBar />
   </div>
 </template>
@@ -27,6 +28,7 @@ import { generateName, isValidHex } from './composables/useColorUtils'
 import AppSidebar from './components/layout/AppSidebar.vue'
 import WizardHeader from './components/layout/WizardHeader.vue'
 import GlobalPaletteBar from './components/layout/GlobalPaletteBar.vue'
+import SidebarAnalysis from './components/layout/SidebarAnalysis.vue'
 import Step1PaletteBuilder from './components/steps/Step1PaletteBuilder.vue'
 import Step2Analysis from './components/steps/Step2Analysis.vue'
 import Step3Contrast from './components/steps/Step3Contrast.vue'
