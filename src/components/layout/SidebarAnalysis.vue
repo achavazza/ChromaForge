@@ -23,22 +23,22 @@
           <div class="rs-scores">
             <div class="rs-score-row">
               <span class="rs-score-label">UI Practicality</span>
-              <div class="rs-score-bar-track">
-                <div class="rs-score-bar-fill practicality" :style="{ width: scores.practicality + '%' }" />
+              <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.practicality)} 18%, transparent)` }">
+                <div class="rs-score-bar-fill practicality" :style="{ width: scores.practicality + '%' , background: scoreColor(scores.practicality) }" />
               </div>
               <span class="rs-score-value" :style="{ color: scoreColor(scores.practicality) }">{{ scores.practicality }}</span>
             </div>
             <div class="rs-score-row">
               <span class="rs-score-label">Cohesion</span>
-              <div class="rs-score-bar-track">
-                <div class="rs-score-bar-fill cohesion" :style="{ width: scores.cohesion + '%' }" />
+              <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.cohesion)} 18%, transparent)` }">
+                <div class="rs-score-bar-fill cohesion" :style="{ width: scores.cohesion + '%', background: scoreColor(scores.cohesion) }" />
               </div>
               <span class="rs-score-value" :style="{ color: scoreColor(scores.cohesion) }">{{ scores.cohesion }}</span>
             </div>
             <div class="rs-score-row">
               <span class="rs-score-label">Fatigue Resist.</span>
-              <div class="rs-score-bar-track">
-                <div class="rs-score-bar-fill fatigue" :style="{ width: scores.fatigue + '%' }" />
+              <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.fatigue)} 18%, transparent)` }">
+                <div class="rs-score-bar-fill fatigue" :style="{ width: scores.fatigue + '%', background: scoreColor(scores.fatigue) }" />
               </div>
               <span class="rs-score-value" :style="{ color: scoreColor(scores.fatigue) }">{{ scores.fatigue }}</span>
             </div>
@@ -93,16 +93,16 @@
             <span>All checks passed</span>
           </div>
           <div v-else class="rs-list">
-            <div v-for="issue in visibleIssues" :key="issue.id" class="rs-issue" :class="`severity-${issue.severity}`">
+            <div v-for="issue in issues" :key="issue.id" class="rs-issue" :class="`severity-${issue.severity}`">
               <div class="rs-issue-top">
                 <span class="rs-issue-title">{{ issue.title }}</span>
                 <span class="rs-issue-sev">{{ issue.severity === 'critical' ? '!' : '•' }}</span>
               </div>
               <p class="rs-issue-desc">{{ issue.description }}</p>
             </div>
-            <button v-if="issues.length > maxVisibleIssues" class="rs-more-btn" @click="showAllIssues = !showAllIssues">
+            <!-- <button v-if="issues.length > maxVisibleIssues" class="rs-more-btn" @click="showAllIssues = !showAllIssues">
               {{ showAllIssues ? 'Show less' : `+${issues.length - maxVisibleIssues} more` }}
-            </button>
+            </button> -->
           </div>
         </div>
       </div>
@@ -126,7 +126,7 @@
             <span>None needed</span>
           </div>
           <div v-else class="rs-list">
-            <div v-for="s in visibleSuggestions" :key="s.id" class="rs-suggestion">
+            <div v-for="s in suggestions" :key="s.id" class="rs-suggestion">
               <div class="rs-sug-info">
                 <span class="rs-sug-color" :style="{ background: s.hex }" />
                 <div class="rs-sug-text">
@@ -143,9 +143,9 @@
                 </button>
               </div>
             </div>
-            <button v-if="suggestions.length > maxVisibleSuggestions" class="rs-more-btn" @click="showAllSuggestions = !showAllSuggestions">
+            <!-- <button v-if="suggestions.length > maxVisibleSuggestions" class="rs-more-btn" @click="showAllSuggestions = !showAllSuggestions">
               {{ showAllSuggestions ? 'Show less' : `+${suggestions.length - maxVisibleSuggestions} more` }}
-            </button>
+            </button> -->
           </div>
         </div>
       </div>
@@ -244,6 +244,7 @@ watch(insightGroups, (groups) => {
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
+  padding-bottom:64px;
 }
 
 .rs-scroll::-webkit-scrollbar { width: 4px; }

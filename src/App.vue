@@ -109,13 +109,13 @@ function autoAssignRoles() {
         assignRole(darkest.id, 'background')
       }
     }
-    if (!taken.has('surface')) {
+   /* if (!taken.has('surface')) {
       const pool = unassigned()
       if (pool.length) {
         const sorted = [...pool].sort((a, b) => chroma(a.hex).luminance() - chroma(b.hex).luminance())
         assignRole(sorted[0].id, 'surface')
       }
-    }
+    }*/
   } else {
     if (!taken.has('background')) {
       const pool = unassigned()
@@ -124,13 +124,13 @@ function autoAssignRoles() {
         assignRole(lightest.id, 'background')
       }
     }
-    if (!taken.has('surface')) {
+   /* if (!taken.has('surface')) {
       const pool = unassigned()
       if (pool.length) {
         const sorted = [...pool].sort((a, b) => chroma(b.hex).luminance() - chroma(a.hex).luminance())
         assignRole(sorted[0].id, 'surface')
       }
-    }
+    }*/
   }
 
   if (!taken.has('primary')) {

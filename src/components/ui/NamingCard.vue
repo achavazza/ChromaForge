@@ -95,17 +95,11 @@ function setRoleSelectRef(id: string, el: HTMLElement) {
 }
 
 const roleGroups: { label: string; roles: { value: SemanticRole; label: string }[] }[] = [
-  { label: 'Layout', roles: [
-    { value: 'background', label: 'Background' },
-    { value: 'text-primary', label: 'Text Primary' },
-    { value: 'surface', label: 'Surface' },
-  ]},
-  { label: 'Semantic', roles: [
-    { value: 'primary', label: 'Primary' },
-    { value: 'error', label: 'Error' },
-    { value: 'success', label: 'Success' },
-    { value: 'warning', label: 'Warning' },
-  ]},
+  { label: 'Layout', roles: [{ value: 'background', label: 'Background' }, { value: 'surface', label: 'Surface' }] },
+  { label: 'Brand', roles: [{ value: 'primary', label: 'Primary' }, { value: 'secondary', label: 'Secondary' }, { value: 'tertiary', label: 'Tertiary' }, { value: 'accent', label: 'Accent' }, { value: 'accent-hover', label: 'Accent Hover' }] },
+  { label: 'Feedback', roles: [{ value: 'success', label: 'Success' }, { value: 'warning', label: 'Warning' }, { value: 'error', label: 'Error' }, { value: 'info', label: 'Info' }] },
+  { label: 'Content', roles: [{ value: 'text-primary', label: 'Text Primary' }, { value: 'text-secondary', label: 'Text Secondary' }, { value: 'muted', label: 'Muted' }, { value: 'border', label: 'Border' }] },
+  { label: 'Neutral', roles: [{ value: 'neutral', label: 'Neutral' }, { value: 'neutral-dark', label: 'Neutral Dark' }, { value: 'neutral-light', label: 'Neutral Light' }] },
 ]
 
 function getRoleLabel(role: SemanticRole): string {

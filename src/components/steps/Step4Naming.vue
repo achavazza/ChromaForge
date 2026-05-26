@@ -60,6 +60,17 @@ function autoNameAll() {
   })
 }
 
+function hueDistToRange(hue: number, low: number, high: number): number {
+  if (low <= high) {
+    if (hue >= low && hue <= high) return 0
+    const dLow = Math.min(Math.abs(hue - low), Math.abs(hue + 360 - low), Math.abs(hue - 360 - low))
+    const dHigh = Math.min(Math.abs(hue - high), Math.abs(hue + 360 - high), Math.abs(hue - 360 - high))
+    return Math.min(dLow, dHigh)
+  }
+  if (hue >= low || hue <= high) return 0
+  return Math.min(Math.abs(hue - low), Math.abs(hue + 360 - high))
+}
+
 function autoAssignRoles() {
   const cs = palette.colors
   cs.forEach(c => { (c as any).roles = [] })
@@ -87,9 +98,10 @@ function autoAssignRoles() {
    cs.forEach(c => { if (!pool.includes(c)) pool.push(c) })
 
    pick('primary', c => chroma(c.hex).get('hsl.s'))
-   pick('error', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 0))
-   pick('success', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 120))
-   pick('warning', c => -Math.abs(((chroma(c.hex).get('oklch.h') + 360) % 360) - 60))
+   pick('error', c => -hueDistToRange((chroma(c.hex).get('oklch.h') + 360) % 360, 0, 25))
+   pick('success', c => -hueDistToRange((chroma(c.hex).get('oklch.h') + 360) % 360, 130, 170))
+   pick('warning', c => -hueDistToRange((chroma(c.hex).get('oklch.h') + 360) % 360, 70, 100))
+   pick('info', c => -hueDistToRange((chroma(c.hex).get('oklch.h') + 360) % 360, 220, 260))
 }
 </script>
 

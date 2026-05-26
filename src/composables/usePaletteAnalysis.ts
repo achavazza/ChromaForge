@@ -2,7 +2,8 @@ import { computed, ref } from 'vue'
 import type { ColorEntry } from '../stores/palette'
 import {
   getLuminance, getSaturation,
-  getColorTemperature, getContrastRatio
+  getColorTemperature, getContrastRatio,
+  computePaletteDNA, deriveSemanticColor, generatePaletteNeutral
 } from './useColorUtils'
 import chroma from 'chroma-js'
 
@@ -28,6 +29,13 @@ export interface Suggestion {
   baseHex?: string
 }
 
+const SEMANTIC_RANGES: Record<string, [number, number]> = {
+  'error': [0, 25],
+  'success': [130, 170],
+  'warning': [70, 100],
+  'info': [220, 260],
+}
+
 export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: () => boolean) {
 
   const issues = computed<PaletteIssue[]>(() => {
@@ -35,7 +43,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
     if (!cs.length) return []
     const result: PaletteIssue[] = []
 
-    // 1. Missing light tones
     const hasLight = cs.some(c => getLuminance(c.hex) > 0.7)
     if (!hasLight) {
       result.push({
@@ -48,7 +55,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // 2. Missing dark tones
     const hasDark = cs.some(c => getLuminance(c.hex) < 0.05)
     if (!hasDark) {
       result.push({
@@ -61,7 +67,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // 3. Saturation variance
     const sats = cs.map(c => getSaturation(c.hex)).filter(s => !isNaN(s))
     if (sats.length > 2) {
       const max = Math.max(...sats)
@@ -78,7 +83,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       }
     }
 
-    // 4. Mixed color temperatures
     const temps = cs.map(c => getColorTemperature(c.hex))
     const warmCount = temps.filter(t => t === 'warm').length
     const coolCount = temps.filter(t => t === 'cool').length
@@ -94,7 +98,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // 5. Over-vibrant
     const vibrant = cs.filter(c => getSaturation(c.hex) > 0.85)
     if (vibrant.length > cs.length * 0.5) {
       result.push({
@@ -107,7 +110,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // 6. Missing semantic roles
     const roles = new Set<string>(cs.flatMap(c => c.roles))
     const missing: string[] = []
     if (!roles.has('success')) missing.push('success')
@@ -124,7 +126,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // 7. Accessibility issues
     const cs2 = cs
     let failCount = 0
     for (let i = 0; i < cs2.length; i++) {
@@ -143,7 +144,6 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
       })
     }
 
-    // 8. Too few colors
     if (cs.length < 4) {
       result.push({
         id: 'too-few',
@@ -158,243 +158,95 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
     return result
   })
 
-  type ShuffleMode = 'lighter' | 'darker' | 'complement' | 'analogous' | 'split'
-
-  const shuffleModes = ref(new Map<string, ShuffleMode>())
+  const suggestionVariants = ref(new Map<string, number>())
+  const VARIANT_COUNT = 4
 
   function regenerateSuggestion(id: string) {
-    const modes: ShuffleMode[] = ['lighter', 'darker', 'complement', 'analogous', 'split']
-    const rand = modes[Math.floor(Math.random() * modes.length)]
-    shuffleModes.value.set(id, rand)
+    const current = suggestionVariants.value.get(id) || 0
+    suggestionVariants.value.set(id, (current + 1) % VARIANT_COUNT)
   }
 
-  function applyMode(hex: string, mode: ShuffleMode, _baseHex?: string): string {
+  function applyVariant(hex: string, variantIdx: number): string {
+    if (variantIdx === 0) return hex
     try {
-      switch (mode) {
-        case 'lighter': {
-          const lum = chroma(hex).luminance()
-          return lum > 0.5
-            ? chroma(hex).brighten(1.5).hex().toUpperCase()
-            : chroma(hex).brighten(2.5).hex().toUpperCase()
-        }
-        case 'darker': {
-          const lum = chroma(hex).luminance()
-          return lum < 0.1
-            ? chroma(hex).darken(1.5).hex().toUpperCase()
-            : chroma(hex).darken(2.5).hex().toUpperCase()
-        }
-        case 'complement': {
-          const h = chroma(hex).get('hsl.h')
-          return chroma(hex).set('hsl.h', (h + 180) % 360).hex().toUpperCase()
-        }
-        case 'analogous': {
-          const h = chroma(hex).get('hsl.h')
-          return chroma(hex).set('hsl.h', (h + 30) % 360).hex().toUpperCase()
-        }
-        case 'split': {
-          const h = chroma(hex).get('hsl.h')
-          return chroma(hex).set('hsl.h', (h + 150) % 360).hex().toUpperCase()
-        }
-        default:
-          return hex.toUpperCase()
+      const [l, c, h] = chroma(hex).oklch()
+      switch (variantIdx) {
+        case 1: return chroma.oklch(Math.min(0.72, l + 0.12), Math.min(0.38, c * 1.35), h).hex().toUpperCase()
+        case 2: return chroma.oklch(Math.max(0.25, l - 0.10), Math.max(0.03, c * 0.65), h).hex().toUpperCase()
+        case 3: return chroma.oklch(Math.min(0.65, l + 0.07), Math.max(0.02, c * 0.5), h).hex().toUpperCase()
+        default: return hex
       }
-    } catch {
-      return hex.toUpperCase()
-    }
+    } catch { return hex }
   }
 
   const suggestions = computed<Suggestion[]>(() => {
     const cs = colorsGetter()
     if (!cs.length) return []
     const result: Suggestion[] = []
-
-    const primary = cs.find(c => c.roles.includes('primary')) || cs[Math.floor(cs.length / 2)] || cs[0]
-    const bg = cs.find(c => c.roles.includes('background')) || cs[0]
+    const dna = computePaletteDNA(cs)
+    const mode: 'dark' | 'light' = (isDark ? isDark() : false) ? 'dark' : 'light'
     const roles = new Set<string>(cs.flatMap(c => c.roles))
 
-    // Helper: force any color toward a target hue
-    function shiftHue(hex: string, targetHue: number): string {
-      try {
-        return chroma(hex).set('hsl.h', targetHue).hex().toUpperCase()
-      } catch {
-        return hex.toUpperCase()
+    const semanticSuggestions: Array<{ id: string, role: string, title: string, explanation: string, impact: string }> = [
+      { id: 'suggest-error', role: 'error', title: 'Add an Error Color', explanation: 'A red tone preserving palette character for destructive actions and validation errors.', impact: 'Users rely on red to identify critical issues instantly.' },
+      { id: 'suggest-success', role: 'success', title: 'Add a Success Color', explanation: 'A green tone preserving palette DNA for positive feedback and confirmation states.', impact: 'Critical for form validation and status indicators.' },
+      { id: 'suggest-warning', role: 'warning', title: 'Add a Warning Color', explanation: 'An amber tone preserving palette character for cautionary states and alerts.', impact: 'Users rely on amber to identify warnings before they escalate.' },
+      { id: 'suggest-info', role: 'info', title: 'Add an Info Color', explanation: 'A blue tone preserving palette DNA for informational states and notifications.', impact: 'Essential for system messages and help cues.' },
+    ]
+
+    for (const s of semanticSuggestions) {
+      if (!roles.has(s.role as any)) {
+        const range = SEMANTIC_RANGES[s.role]
+        const variantIdx = suggestionVariants.value.get(s.id) || 0
+        const hex = applyVariant(deriveSemanticColor(dna, range[0], range[1], mode, 'accent'), variantIdx)
+        result.push({ id: s.id, hex, role: s.role, title: s.title, explanation: s.explanation, accessibilityImpact: s.impact })
       }
     }
 
-    // Suggest error — ALWAYS a red color
-    if (!roles.has('error')) {
-      const baseHex = primary ? primary.hex : '#6366F1'
-      const forcedRed = shiftHue(baseHex, 0)
-      const dark = isDark ? isDark() : false
-      const errMode = shuffleModes.value.get('suggest-error') || 'lighter'
-      let errHex: string
-      if (dark) {
-        // Dark mode: bright/light red so it pops against dark backgrounds
-        switch (errMode) {
-          case 'lighter': errHex = chroma(forcedRed).brighten(1.8).hex().toUpperCase(); break
-          case 'darker': errHex = chroma(forcedRed).brighten(0.8).hex().toUpperCase(); break
-          case 'complement': errHex = chroma(forcedRed).saturate(0.3).brighten(1.2).hex().toUpperCase(); break
-          case 'analogous': errHex = chroma(forcedRed).desaturate(0.3).brighten(1.2).hex().toUpperCase(); break
-          default: errHex = chroma(forcedRed).set('hsl.s', 0.8).brighten(1.2).hex().toUpperCase(); break
-        }
-      } else {
-        // Light mode: deep/dark red so it's visible against light backgrounds
-        switch (errMode) {
-          case 'lighter': errHex = chroma(forcedRed).darken(0.3).hex().toUpperCase(); break
-          case 'darker': errHex = chroma(forcedRed).darken(1.5).hex().toUpperCase(); break
-          case 'complement': errHex = chroma(forcedRed).saturate(0.3).darken(0.8).hex().toUpperCase(); break
-          case 'analogous': errHex = chroma(forcedRed).desaturate(0.3).darken(0.8).hex().toUpperCase(); break
-          default: errHex = chroma(forcedRed).set('hsl.s', 0.8).darken(0.5).hex().toUpperCase(); break
-        }
-      }
-      result.push({
-        id: 'suggest-error',
-        hex: errHex,
-        role: 'error',
-        title: 'Add an Error Color',
-        explanation: `A red tone derived from ${primary?.name || 'your palette'} for destructive actions and validation errors.`,
-        accessibilityImpact: 'Users rely on red to identify critical issues instantly.',
-        baseHex: baseHex,
-      })
-    }
-
-    // Suggest success — ALWAYS a green color
-    if (!roles.has('success')) {
-      const baseHex = primary ? primary.hex : '#6366F1'
-      const forcedGreen = shiftHue(baseHex, 120)
-      const dark = isDark ? isDark() : false
-      const sucMode = shuffleModes.value.get('suggest-success') || 'lighter'
-      let successHex: string
-      if (dark) {
-        // Dark mode: bright/light green
-        switch (sucMode) {
-          case 'lighter': successHex = chroma(forcedGreen).brighten(1.8).hex().toUpperCase(); break
-          case 'darker': successHex = chroma(forcedGreen).brighten(0.8).hex().toUpperCase(); break
-          case 'complement': successHex = chroma(forcedGreen).saturate(0.3).brighten(1.2).hex().toUpperCase(); break
-          case 'analogous': successHex = chroma(forcedGreen).desaturate(0.3).brighten(1.2).hex().toUpperCase(); break
-          default: successHex = chroma(forcedGreen).set('hsl.s', 0.7).brighten(1.2).hex().toUpperCase(); break
-        }
-      } else {
-        // Light mode: deep/dark green
-        switch (sucMode) {
-          case 'lighter': successHex = chroma(forcedGreen).darken(0.3).hex().toUpperCase(); break
-          case 'darker': successHex = chroma(forcedGreen).darken(1.5).hex().toUpperCase(); break
-          case 'complement': successHex = chroma(forcedGreen).saturate(0.3).darken(0.8).hex().toUpperCase(); break
-          case 'analogous': successHex = chroma(forcedGreen).desaturate(0.3).darken(0.8).hex().toUpperCase(); break
-          default: successHex = chroma(forcedGreen).set('hsl.s', 0.7).darken(0.5).hex().toUpperCase(); break
-        }
-      }
-      result.push({
-        id: 'suggest-success',
-        hex: successHex,
-        role: 'success',
-        title: 'Add a Success Color',
-        explanation: `A green tone derived from ${primary?.name || 'your palette'} for positive feedback and confirmation states.`,
-        accessibilityImpact: 'Critical for form validation and status indicators.',
-        baseHex: baseHex,
-      })
-    }
-
-    // Suggest dark tone — darkened version of a random palette color
     const hasDark = cs.some(c => getLuminance(c.hex) < 0.05)
     if (!hasDark && !roles.has('neutral-dark')) {
-      const baseColor = cs[Math.floor(Math.random() * cs.length)].hex
-      const targetLum = Math.random() * 0.1
-      let darkHex: string
-      try {
-        darkHex = chroma(baseColor).luminance(targetLum).hex().toUpperCase()
-      } catch {
-        darkHex = '#1a1a2e'
-      }
-      const mode = shuffleModes.value.get('suggest-dark') || 'darker'
-      darkHex = applyMode(darkHex, mode)
+      const hex = generatePaletteNeutral(dna, 0.04, 0.12)
       result.push({
         id: 'suggest-dark',
-        hex: darkHex,
+        hex,
         role: 'neutral-dark',
         title: 'Add a Dark Tone',
-        explanation: 'A deep dark color derived from your palette for backgrounds, borders, or elevated surfaces.',
+        explanation: 'A deep dark color tinted with palette hue for backgrounds, borders, or elevated surfaces.',
         accessibilityImpact: 'Essential for contrast depth and dark mode support.',
-        baseHex: baseColor,
       })
     }
 
-    // Suggest light tone — lightened version of a random palette color
     const hasLight = cs.some(c => getLuminance(c.hex) > 0.7)
     if (!hasLight && !roles.has('neutral-light')) {
-      const baseColor = cs[Math.floor(Math.random() * cs.length)].hex
-      const targetLum = 0.9 + Math.random() * 0.1
-      let lightHex: string
-      try {
-        lightHex = chroma(baseColor).luminance(targetLum).hex().toUpperCase()
-      } catch {
-        lightHex = '#f0f0f8'
-      }
-      const mode = shuffleModes.value.get('suggest-light') || 'lighter'
-      lightHex = applyMode(lightHex, mode)
+      const hex = generatePaletteNeutral(dna, 0.93, 0.08)
       result.push({
         id: 'suggest-light',
-        hex: lightHex,
+        hex,
         role: 'neutral-light',
         title: 'Add a Light Tone',
-        explanation: 'A light tone derived from your palette for surfaces, cards, and backgrounds.',
+        explanation: 'A light tone tinted with palette hue for surfaces, cards, and backgrounds.',
         accessibilityImpact: 'Provides clean, readable surfaces for content.',
-        baseHex: baseColor,
       })
     }
 
-    // Suggest warning — amber/orange color (matches missing-semantics issue)
-    if (!roles.has('warning')) {
-      const baseHex = primary ? primary.hex : '#6366F1'
-      const forcedOrange = shiftHue(baseHex, 40)
-      const dark = isDark ? isDark() : false
-      const warnMode = shuffleModes.value.get('suggest-warning') || 'lighter'
-      let warnHex: string
-      if (dark) {
-        switch (warnMode) {
-          case 'lighter': warnHex = chroma(forcedOrange).brighten(1.8).hex().toUpperCase(); break
-          case 'darker': warnHex = chroma(forcedOrange).brighten(0.8).hex().toUpperCase(); break
-          case 'complement': warnHex = chroma(forcedOrange).saturate(0.3).brighten(1.2).hex().toUpperCase(); break
-          case 'analogous': warnHex = chroma(forcedOrange).desaturate(0.3).brighten(1.2).hex().toUpperCase(); break
-          default: warnHex = chroma(forcedOrange).set('hsl.s', 0.8).brighten(1.2).hex().toUpperCase(); break
-        }
-      } else {
-        switch (warnMode) {
-          case 'lighter': warnHex = chroma(forcedOrange).darken(0.3).hex().toUpperCase(); break
-          case 'darker': warnHex = chroma(forcedOrange).darken(1.5).hex().toUpperCase(); break
-          case 'complement': warnHex = chroma(forcedOrange).saturate(0.3).darken(0.8).hex().toUpperCase(); break
-          case 'analogous': warnHex = chroma(forcedOrange).desaturate(0.3).darken(0.8).hex().toUpperCase(); break
-          default: warnHex = chroma(forcedOrange).set('hsl.s', 0.8).darken(0.5).hex().toUpperCase(); break
-        }
-      }
-      result.push({
-        id: 'suggest-warning',
-        hex: warnHex,
-        role: 'warning',
-        title: 'Add a Warning Color',
-        explanation: 'An amber tone for cautionary states, alerts, and medium-severity feedback.',
-        accessibilityImpact: 'Users rely on amber to identify warnings before they escalate.',
-        baseHex: baseHex,
-      })
-    }
-
-    // Suggest text color — derived from background (light bg → dark text, dark bg → light text)
     const hasTextColor = roles.has('text-primary') || roles.has('text-secondary')
-    if (!hasTextColor && bg) {
-      const mode = shuffleModes.value.get('suggest-text') || 'split'
-      const bgLum = getLuminance(bg.hex)
-      const baseText = bgLum > 0.5 ? '#374151' : '#e5e7eb'
-      const textHex = applyMode(baseText, mode)
+    const primary = cs.find(c => c.roles.includes('primary')) || cs[0]
+    if (!hasTextColor && primary) {
+      const bg = cs.find(c => c.roles.includes('background')) || cs[0]
+      const bgLum = getLuminance(bg?.hex || '#ffffff')
+      const textLum = bgLum > 0.5 ? 0.12 : 0.88
+      const textChroma = dna.averageChroma * 0.05
+      const textHue = dna.dominantHue
+      const textHex = chroma.oklch(textLum, Math.max(0.01, textChroma), textHue).hex().toUpperCase()
       result.push({
         id: 'suggest-text',
         hex: textHex,
         role: 'text-primary',
         title: 'Add a Text Color',
         explanation: bgLum > 0.5
-          ? 'Your background is light — a dark charcoal text ensures strong readability.'
-          : 'Your background is dark — a light off-white text ensures strong readability.',
+          ? 'Your background is light — a palette-tinted dark text ensures strong readability.'
+          : 'Your background is dark — a palette-tinted light text ensures strong readability.',
         accessibilityImpact: 'Fundamental for readable content across your UI.',
-        baseHex: bg.hex,
       })
     }
 
