@@ -22,6 +22,17 @@
           </svg>
           Add Color
         </button>
+        <button v-if="palette.colors.length > 0" class="btn btn-primary" @click="newPalette" id="new-palette-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3h.01M12 7h.01M12 11h.01M12 15h.01M12 19h.01"/>
+            <circle cx="12" cy="3" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="7" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="11" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="15" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+          </svg>
+          New Palette
+        </button>
         <button v-if="palette.colors.length > 0" class="btn btn-ghost btn-danger" @click="clearAll" id="clear-all-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/>
@@ -167,8 +178,18 @@ function applySavedPalette(hexes: string[]) {
   hexes.forEach(hex => palette.addColor(hex))
 }
 
+function newPalette() {
+  if (palette.colors.length === 0) return
+  if (window.confirm('Start a new palette? All current colors will be cleared.')) {
+    palette.clearAll()
+  }
+}
+
 function clearAll() {
-  palette.reorderColors([])
+  if (palette.colors.length === 0) return
+  if (window.confirm('Remove all colors from the palette?')) {
+    palette.clearAll()
+  }
 }
 
 function openAddPreview() {

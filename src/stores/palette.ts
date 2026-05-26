@@ -75,6 +75,13 @@ export const usePaletteStore = defineStore('palette', () => {
     colors.value = newOrder
   }
 
+  function clearAll() {
+    colors.value = []
+    contrastPairs.value = []
+    approvedPairings.value = new Set()
+    ignoredPairings.value = new Set()
+  }
+
   function importColors(hexList: string[]) {
     hexList.forEach(hex => {
       colors.value.push({ id: uid(), hex, name: '', roles: [], locked: false })
@@ -138,7 +145,7 @@ export const usePaletteStore = defineStore('palette', () => {
 
   return {
     colors, originalColors, contrastPairs,
-    addColor, removeColor, duplicateColor, updateColor, reorderColors, importColors,
+    addColor, removeColor, duplicateColor, updateColor, reorderColors, clearAll, importColors,
     generateContrastPairs, toggleApproved, toggleIgnored, snapshotOriginal,
     colorById, aaaCount, aaCount, failCount,
   }
