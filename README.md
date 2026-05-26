@@ -24,15 +24,15 @@ into a single modern experience.
 
 ## Wizard-Based Workflow
 
-ChromaForge uses a structured multi-step workflow with a persistent sidebar navigation.
+ChromaForge uses a structured multi-step workflow with persistent sidebar navigation and global palette bar.
 
 ### Steps
 
 1. Palette Builder
-2. Analysis & Suggestions
+2. Analysis & Color Suggestions
 3. WCAG Testing
 4. Naming & Semantic Roles
-5. Preview & Export
+5. Live Preview & Export
 
 ---
 
@@ -43,59 +43,44 @@ Build and organize your palette visually.
 ## Features
 
 * Unlimited colors
-* Drag & drop reordering
-* Modern color picker
-* HEX editing
-* Role assignment
+* Drag & drop reordering (toggleable via "Reorder" button — handles only visible when active)
+* Modern color picker with EyeDropper API (falls back to native picker on non-Chromium)
+* HEX display (inline editing via color modal)
+* Role assignment via collapsible dropdown (chips when closed, checkbox list when open)
+* Role conflict detection (a role can never be shared by 2 colors)
 * Duplicate/remove colors
-* Import existing palettes
+* Import existing palettes via HEX input
+* Global Palette Bar at bottom (fixed, content padded 96px)
+* Color modal with inline HEX/RGB/HSL editing, copy, and color picker
 
 ## Semantic Roles
 
-Assign meaningful UI roles to each color:
+16 roles across 5 groups:
 
-* Background
-* Surface
-* Primary
-* Secondary
-* Tertiary
+* Background, Surface
+* Primary, Secondary, Tertiary
 * Accent
-* Success
-* Warning
-* Error
-* Info
-* Border
-* Text Primary
-* Text Secondary
-* Neutral
-* Neutral Light
-* Neutral Dark
-
-## Palette Import
-
-Paste HEX values directly into a modal.
-
-Supports:
-
-```txt
-#FFBE0B, #FB5607, #FF006E
-```
-
-or
-
-```txt
-#FFBE0B
-#FB5607
-#FF006E
-```
-
-Invalid values are automatically sanitized.
+* Success, Warning, Error, Info
+* Border, Text Primary, Text Secondary, Neutral, Neutral Light, Neutral Dark
 
 ---
 
-# Step 2 — Analysis & Smart Suggestions
+# Step 2 — Analysis & Color Suggestions
 
-The intelligent analysis engine continuously evaluates palette quality.
+Palette DNA–driven analysis engine continuously evaluates palette quality.
+
+## Palette DNA
+
+The engine computes a `PaletteDNA` signature from your palette using OKLCH color space:
+
+* Dominant hue (circular mean)
+* Average chroma and lightness
+* Saturation variance
+* Warm/cool tendency
+* Vibrancy
+* Overall mood
+
+This DNA powers all suggestions and semantic derivations.
 
 ## Palette Health Analysis
 
@@ -110,38 +95,17 @@ Detects issues such as:
 * Eye strain risk
 * Weak semantic structure
 
-## Example Feedback
+## Color Suggestions
 
-### Missing Light Tones
-
-> No light tones detected. Consider adding a light color for surfaces or backgrounds.
-
-### Inconsistent Saturation
-
-> High saturation variance makes the palette feel disjointed.
-
-### Over-Vibrant Palette
-
-> Too many saturated colors may cause eye strain.
-
-### Accessibility Issues
-
-> 5 contrast pairs fail WCAG AA requirements.
-
----
-
-# Smart Color Suggestions
-
-ChromaForge generates contextual recommendations based on the current palette.
+ChromaForge generates contextual recommendations based on the current palette DNA.
 
 Suggestions include:
 
-* Neutral systems
+* Neutral systems (hue-biased from palette, not pure gray)
 * Light/dark surfaces
-* Semantic success/error colors
+* Semantic error/success/warning/info colors
 * Accessible replacements
 * Softer variants
-* Hover states
 * Tonal bridge colors
 
 Each suggestion card includes:
@@ -151,17 +115,18 @@ Each suggestion card includes:
 * Explanation
 * Accessibility impact
 * Add button
-* Shuffle button
-* Manual edit option
+* Shuffle button (cycles through 4 OKLCH variants — never generates black)
 
-## Shuffle Suggestions
+## Regenerate Variants
 
-Generate alternative compatible suggestions while preserving:
+Four visually distinct OKLCH variants per suggestion:
 
-* palette harmony
-* accessibility
-* tonal consistency
-* color temperature
+1. Standard accent
+2. Brighter + punchier
+3. Darker + muted
+4. Softer pastel
+
+All stay within visible range (lightness 0.25–0.72).
 
 ---
 
@@ -176,14 +141,6 @@ Summary cards display:
 * AAA Passed
 * AA Passed
 * Failed Pairings
-
-Example:
-
-```txt
-AAA → 2
-AA → 3
-Fail → 16
-```
 
 ## Pairings Table
 
@@ -227,9 +184,12 @@ Finalize your design token system.
 
 ## Features
 
-* Assign missing roles
-* Rename colors
+* Assign missing roles (full 16-role dropdown)
+* Rename colors with token name input
 * Generate semantic token names
+* Role conflict warnings
+* Token preview with adaptive text color
+* Missing-role border highlighting
 * Organize design tokens visually
 
 Examples:
@@ -243,7 +203,7 @@ success-soft
 
 ---
 
-# Step 5 — Preview & Export
+# Step 5 — Live Preview & Export
 
 Preview the refined palette inside realistic UI components.
 
@@ -262,100 +222,109 @@ Generate components such as:
 
 Updates occur in real time.
 
----
+## Hero Image Colorization
 
-# Before / After Comparison
+Preview palette colorization on hero imagery using CSS blend modes:
 
-Compare:
+* `color` blend mode overlay
+* `multiply` blend mode shadow
+* `soft-light` blend mode wash
 
-* Original palette
-* Refined palette
+Each uses palette CSS custom properties (`--p-primary`, `--p-secondary`) with gradient gradients — preserving image luminance naturally.
 
-using a draggable before/after component.
+## Before / After Comparison
 
----
+Compare original and refined palettes using a draggable split component.
 
-# Dynamic Image Filtering
-
-Preview how the palette affects photography and branding visuals.
-
-Features:
-
-* Dummy image generation
-* Duotone overlays
-* Hue shifts
-* Saturation filters
-* CSS blend modes
-
----
-
-# Form State Preview
-
-Visualize states such as:
-
-* default
-* hover
-* focus
-* success
-* warning
-* error
-* disabled
-
----
-
-# Export Options
+## Export Options
 
 Export palettes as:
 
 * CSS variables
-* Tailwind config
-* JSON design tokens
 * SCSS variables
+* JSON design tokens
+* Tailwind config
 * Figma tokens
 
----
+## PNG Download
 
-# Shareable URLs
+Download a PNG image with:
 
-Palettes can be serialized directly into the URL.
-
-Example:
-
-```txt
-/#FFBE0B-FB5607-FF006E-8338EC-3A86FF
-```
-
-The URL can preserve:
-
-* colors
-* roles
-* pairings
-* theme mode
-* refinements
+* Rounded swatches
+* HEX code, token name, and roles per color
+* 9-step OKLCH tonal scale per color
+* Theme-aware (dark/light background)
+* 2x retina resolution
 
 ---
 
-# Color Inspector
+# Palette Analysis & Right Sidebar
 
-Click any color to open an advanced inspector panel.
+The right sidebar provides advanced analysis with collapsible panels:
 
-## Includes
+## Categorized Insights
 
-* HEX
-* RGB
-* HSL
-* OKLCH
-* Luminance
-* Contrast data
-* Accessibility notes
+Panels for:
+* Visual Balance
+* Practicality
+* Readability
 
-## Generated Relationships
+Each shows a severity-aware insight list with title, description, and severity dot.
 
-* Complementary
-* Analogous
-* Triadic
-* Split complementary
-* Monochromatic variants
+## Color Suggestions Panel
+
+Smart, palette DNA–driven suggestions starts open by default; other panels collapsed.
+
+## Composite Scores
+
+Three composite score bars:
+* Practicality
+* Cohesion
+* Fatigue
+
+Each bar uses `color-mix` tied to the score value for dynamic tinting.
+
+---
+
+# Color Modal (Unified Inspector)
+
+Click any color to open the unified color modal with two modes:
+
+## Edit Mode
+* HEX input with inline editing (single-click, Enter/blur commits, Escape cancels)
+* RGB inline editing
+* HSL inline editing
+* Native color picker with EyeDropper API fallback
+* Role assignment
+* Tonal scale (9-step OKLCH)
+* Harmony colors (complementary, analogous, triadic)
+* Clone and Remove actions
+
+## Preview Mode
+* Large color preview
+* HEX/RGB/HSL display
+* Tonal scale
+* Harmony colors
+* Add action (from global palette bar)
+
+Used consistently across ColorCard, TonalEditModal, GlobalPaletteBar, and Step1PaletteBuilder.
+
+---
+
+# ColorCard (Unified Color + Naming Card)
+
+A single component with `showNaming` prop:
+
+* Drag handle (only with "Reorder" toggle)
+* Preview bar (click → ColorModal)
+* HEX display (span, read-only)
+* Token name input (when `showNaming`)
+* Role selector (full-width, collapsible dropdown)
+* Missing-role warning
+* Token preview with adaptive text
+* Adaptive hex label color
+
+Replaces both old ColorCard and NamingCard components.
 
 ---
 
@@ -363,10 +332,12 @@ Click any color to open an advanced inspector panel.
 
 Supports:
 
-* Light UI
+* Light UI (white track)
 * Dark UI
 
-The interface adapts dynamically while preserving palette editing logic.
+Toggle in wizard header with separator. The interface adapts dynamically while preserving palette editing logic.
+
+Labels: "Dark" / "Light"
 
 ---
 
@@ -383,7 +354,7 @@ The interface adapts dynamically while preserving palette editing logic.
 
 ## Libraries
 
-* chroma.js
+* chroma.js (OKLCH color space)
 * culori
 * tinycolor2
 * WCAG contrast utilities
@@ -443,25 +414,6 @@ Avoid:
 
 ---
 
-# Future Ideas
-
-Potential future features:
-
-* AI palette generation
-* Mood-based systems
-* Brand personality presets
-* Color blindness simulation
-* Screenshot palette extraction
-* Typography pairing
-* Auto-generated hover states
-* Design token pipelines
-* Multi-brand support
-* Team collaboration
-* Figma plugin
-* Tailwind plugin
-
----
-
 # Development
 
 ## Install
@@ -487,9 +439,3 @@ npm run build
 # License
 
 MIT
-
----
-
-# ChromaForge
-
-Forge better color systems.

@@ -194,18 +194,6 @@ function scoreColor(v: number): string {
   return 'var(--error)'
 }
 
-const maxVisibleIssues = 3
-const showAllIssues = ref(false)
-const visibleIssues = computed(() =>
-  showAllIssues.value ? issues.value : issues.value.slice(0, maxVisibleIssues)
-)
-
-const maxVisibleSuggestions = 3
-const showAllSuggestions = ref(false)
-const visibleSuggestions = computed(() =>
-  showAllSuggestions.value ? suggestions.value : suggestions.value.slice(0, maxVisibleSuggestions)
-)
-
 function addSuggestion(s: Suggestion) {
   palette.addColor(s.hex)
   const c = palette.colors[palette.colors.length - 1]
