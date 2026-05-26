@@ -114,7 +114,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { ColorEntry, SemanticRole } from '../../stores/palette'
 import { usePaletteStore } from '../../stores/palette'
-import { getBestTextColor, generateName } from '../../composables/useColorUtils'
+import { generateName } from '../../composables/useColorUtils'
 import ColorModal from './ColorModal.vue'
 
 const palette = usePaletteStore()
@@ -166,7 +166,6 @@ const roleGroups: { label: string; roles: { value: SemanticRole; label: string }
   { label: 'Neutral', roles: [{ value: 'neutral', label: 'Neutral' }, { value: 'neutral-dark', label: 'Neutral Dark' }, { value: 'neutral-light', label: 'Neutral Light' }] },
 ]
 
-const bestTextColor = computed(() => getBestTextColor(props.color.hex))
 const tokenName = computed(() => props.color.name || generateName(props.color.hex, props.color.roles))
 
 function getRoleLabel(role: SemanticRole): string {

@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import chroma from 'chroma-js'
 import type { ColorEntry, ContrastPair } from '../stores/palette'
 
@@ -21,6 +21,17 @@ export interface PaletteScores {
   practicality: number
   cohesion: number
   fatigue: number
+}
+
+export interface ColorRefinement {
+  colorId: string
+  currentHex: string
+  suggestedHex: string
+  title: string
+  explanation: string
+  rationale: string
+  huePreserved: boolean
+  chromaReduction: number
 }
 
 export function useAdvancedAnalysis(
@@ -371,6 +382,63 @@ export function useAdvancedAnalysis(
     }
   })
 
+  // ── Refinements: over-saturated color suggestions ────
+
+  const refinementVariants = ref(new Map<string, number>())
+  const REFINEMENT_VARIANT_COUNT = 5
+
+  function computeRefinementHex(hex: string, variant: number, meanSat: number): string {
+    try {
+      const [l, , h] = chroma(hex).oklch()
+      const targetChroma = meanSat * 0.28
+      switch (variant) {
+        case 0: return buildOKLCH(l, targetChroma, h)
+        case 1: return buildOKLCH(Math.min(l + 0.06, 0.72), targetChroma * 0.85, h)
+        case 2: return buildOKLCH(Math.max(l - 0.04, 0.25), targetChroma * 1.1, h)
+        case 3: return buildOKLCH(Math.min(l + 0.1, 0.75), targetChroma * 0.6, h)
+        case 4: return buildOKLCH(l, targetChroma * 0.5, h)
+        default: return buildOKLCH(l, targetChroma, h)
+      }
+    } catch { return hex }
+  }
+
+  const refinements = computed<ColorRefinement[]>(() => {
+    const cs = colors.value
+    if (cs.length < 2) return []
+    const hexes = cs.map(c => c.hex)
+    const saturations = hexes.map(h => chroma(h).get('hsl.s'))
+    const satMean = saturations.reduce((a, b) => a + b, 0) / saturations.length
+
+    const result: ColorRefinement[] = []
+    for (let i = 0; i < cs.length; i++) {
+      const sat = saturations[i]
+      if (sat > satMean * 1.8 && sat > 0.5) {
+        const variantIdx = refinementVariants.value.get(cs[i].id) || 0
+        const suggestedHex = computeRefinementHex(cs[i].hex, variantIdx, satMean)
+        const chromaBefore = chroma(cs[i].hex).get('hsl.s')
+        const chromaAfter = chroma(suggestedHex).get('hsl.s')
+        const hueBefore = (chroma(cs[i].hex).get('hsl.h') || 0 + 360) % 360
+        const hueAfter = (chroma(suggestedHex).get('hsl.h') || 0 + 360) % 360
+        result.push({
+          colorId: cs[i].id,
+          currentHex: cs[i].hex,
+          suggestedHex,
+          title: `${cs[i].name || 'Color'} is over-saturated`,
+          explanation: `This color is ${Math.round((sat / satMean) * 100)}% more saturated than the palette average, creating visual tension.`,
+          rationale: `The refined version preserves hue identity (${Math.round(hueBefore)}° → ${Math.round(hueAfter)}°) while reducing chroma by ${Math.round((1 - chromaAfter / chromaBefore) * 100)}% to harmonize with the rest of the palette.`,
+          huePreserved: Math.abs(hueBefore - hueAfter) < 15 || Math.abs(hueBefore - hueAfter) > 345,
+          chromaReduction: Math.round(Math.max(0, 1 - chromaAfter / chromaBefore) * 100),
+        })
+      }
+    }
+    return result
+  })
+
+  function cycleRefinement(colorId: string) {
+    const current = refinementVariants.value.get(colorId) || 0
+    refinementVariants.value.set(colorId, (current + 1) % REFINEMENT_VARIANT_COUNT)
+  }
+
   // ── Summaries for the sidebar ────────────────────────
 
   const topIssues = computed(() => insights.value.filter(i => i.severity !== 'success').slice(0, 6))
@@ -399,6 +467,8 @@ export function useAdvancedAnalysis(
     scores,
     topIssues,
     insightGroups,
+    refinements,
+    cycleRefinement,
   }
 }
 
@@ -412,6 +482,15 @@ function getTemperature(hex: string): 'warm' | 'cool' | 'neutral' {
 
 function shortHex(hex: string): string {
   return hex.length > 9 ? hex.slice(0, 9) + '…' : hex
+}
+
+function buildOKLCH(l: number, c: number, h: number): string {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try { return chroma.oklch(l, c, h).hex().toUpperCase() }
+    catch { c *= 0.85 }
+  }
+  const gray = Math.round(Math.max(0, Math.min(1, l)) * 255)
+  return `#${gray.toString(16).padStart(2, '0').repeat(3)}`.toUpperCase()
 }
 
 function categoryLabel(key: string): string {

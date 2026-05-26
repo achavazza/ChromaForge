@@ -193,11 +193,13 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
     const mode: 'dark' | 'light' = (isDark ? isDark() : false) ? 'dark' : 'light'
     const roles = new Set<string>(cs.flatMap(c => c.roles))
 
+    const paletteDesc = dna.warmCoolTendency === 'warm' ? 'warm' : 'cool'
+    const chromaDesc = dna.vibrancy > 0.6 ? 'vibrant' : dna.vibrancy > 0.3 ? 'moderate' : 'muted'
     const semanticSuggestions: Array<{ id: string, role: string, title: string, explanation: string, impact: string }> = [
-      { id: 'suggest-error', role: 'error', title: 'Add an Error Color', explanation: 'A red tone preserving palette character for destructive actions and validation errors.', impact: 'Users rely on red to identify critical issues instantly.' },
-      { id: 'suggest-success', role: 'success', title: 'Add a Success Color', explanation: 'A green tone preserving palette DNA for positive feedback and confirmation states.', impact: 'Critical for form validation and status indicators.' },
-      { id: 'suggest-warning', role: 'warning', title: 'Add a Warning Color', explanation: 'An amber tone preserving palette character for cautionary states and alerts.', impact: 'Users rely on amber to identify warnings before they escalate.' },
-      { id: 'suggest-info', role: 'info', title: 'Add an Info Color', explanation: 'A blue tone preserving palette DNA for informational states and notifications.', impact: 'Essential for system messages and help cues.' },
+      { id: 'suggest-error', role: 'error', title: 'Add an Error Color', explanation: `A ${chromaDesc} ${paletteDesc}-leaning crimson derived from palette DNA for destructive actions and validation errors.`, impact: 'Users rely on red to identify critical issues instantly.' },
+      { id: 'suggest-success', role: 'success', title: 'Add a Success Color', explanation: `A ${chromaDesc} ${paletteDesc} green derived from palette DNA for positive feedback and confirmation states.`, impact: 'Critical for form validation and status indicators.' },
+      { id: 'suggest-warning', role: 'warning', title: 'Add a Warning Color', explanation: `A ${chromaDesc} ${paletteDesc} amber derived from palette DNA for cautionary states and alerts.`, impact: 'Users rely on amber to identify warnings before they escalate.' },
+      { id: 'suggest-info', role: 'info', title: 'Add an Info Color', explanation: `A ${chromaDesc} ${paletteDesc} blue derived from palette DNA for informational states and notifications.`, impact: 'Essential for system messages and help cues.' },
     ]
 
     for (const s of semanticSuggestions) {
@@ -217,7 +219,7 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
         hex,
         role: 'neutral-dark',
         title: 'Add a Dark Tone',
-        explanation: 'A deep dark color tinted with palette hue for backgrounds, borders, or elevated surfaces.',
+        explanation: `A deep ${paletteDesc}-tinted near-black (not pure #000) for backgrounds, borders, or elevated surfaces.`,
         accessibilityImpact: 'Essential for contrast depth and dark mode support.',
       })
     }
@@ -230,7 +232,7 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
         hex,
         role: 'neutral-light',
         title: 'Add a Light Tone',
-        explanation: 'A light tone tinted with palette hue for surfaces, cards, and backgrounds.',
+        explanation: `A ${paletteDesc}-tinted off-white (not pure #FFF) for surfaces, cards, and backgrounds.`,
         accessibilityImpact: 'Provides clean, readable surfaces for content.',
       })
     }
@@ -250,8 +252,8 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
         role: 'text-primary',
         title: 'Add a Text Color',
         explanation: bgLum > 0.5
-          ? 'Your background is light — a palette-tinted dark text ensures strong readability.'
-          : 'Your background is dark — a palette-tinted light text ensures strong readability.',
+          ? `Your background is light — a ${paletteDesc}-tinted dark text (not pure black) ensures strong readability.`
+          : `Your background is dark — a ${paletteDesc}-tinted light text (not pure white) ensures strong readability.`,
         accessibilityImpact: 'Fundamental for readable content across your UI.',
       })
     }

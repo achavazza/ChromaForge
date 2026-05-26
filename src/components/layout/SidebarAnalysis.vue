@@ -107,6 +107,69 @@
         </div>
       </div>
 
+      <!-- Refinements -->
+      <div class="rs-panel" :class="{ collapsed: !openPanels.refinements }">
+        <button class="rs-header" @click="toggle('refinements')">
+          <span class="rs-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3h.01M12 7h.01M12 11h.01M12 15h.01M12 19h.01"/>
+              <circle cx="12" cy="3" r="1" fill="currentColor"/>
+              <circle cx="12" cy="7" r="1" fill="currentColor"/>
+              <circle cx="12" cy="11" r="1" fill="currentColor"/>
+              <circle cx="12" cy="15" r="1" fill="currentColor"/>
+              <circle cx="12" cy="19" r="1" fill="currentColor"/>
+            </svg>
+            Refinements
+          </span>
+          <span class="rs-header-right">
+            <span class="rs-badge accent">{{ refinements.length }}</span>
+            <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </button>
+        <div class="rs-body">
+          <div v-if="refinements.length === 0" class="rs-empty">
+            <span>All colors well-balanced</span>
+          </div>
+          <div v-else class="rs-list">
+            <div v-for="r in refinements" :key="r.colorId" class="rs-refinement">
+              <div class="rs-ref-title">{{ r.title }}</div>
+              <p class="rs-ref-explain">{{ r.explanation }}</p>
+              <div class="rs-ref-compare">
+                <div class="rs-ref-swatch-col">
+                  <span class="rs-ref-label">Current</span>
+                  <span class="rs-ref-swatch" :style="{ background: r.currentHex }" />
+                  <span class="rs-ref-hex">{{ r.currentHex }}</span>
+                </div>
+                <svg class="rs-ref-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+                <div class="rs-ref-swatch-col">
+                  <span class="rs-ref-label">Refined</span>
+                  <span class="rs-ref-swatch rs-ref-swatch-refined" :style="{ background: r.suggestedHex }" />
+                  <span class="rs-ref-hex">{{ r.suggestedHex }}</span>
+                </div>
+              </div>
+              <p class="rs-ref-rationale">{{ r.rationale }}</p>
+              <div class="rs-ref-actions">
+                <button class="rs-sug-btn" @click="replaceRefinement(r)" title="Replace color">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                  Replace
+                </button>
+                <button class="rs-sug-btn" @click="shuffleRefinement(r)" title="Shuffle alternative">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+                    <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                  </svg>
+                  Shuffle
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Suggestions -->
       <div class="rs-panel" :class="{ collapsed: !openPanels.suggestions }">
         <button class="rs-header" @click="toggle('suggestions')">
@@ -168,7 +231,7 @@ const { issues, suggestions, healthScore, regenerateSuggestion } = usePaletteAna
   () => themeStore.isDark,
   () => palette.contrastPairs
 )
-const { scores, insightGroups } = useAdvancedAnalysis(
+const { scores, insightGroups, refinements, cycleRefinement } = useAdvancedAnalysis(
   () => palette.colors,
   () => themeStore.isDark,
   () => palette.contrastPairs
@@ -177,6 +240,7 @@ const { scores, insightGroups } = useAdvancedAnalysis(
 const openPanels = ref<Record<string, boolean>>({
   issues: false,
   suggestions: true,
+  refinements: true,
 })
 
 function toggle(key: string) {
@@ -204,6 +268,14 @@ function addSuggestion(s: Suggestion) {
 
 function shuffleSuggestion(s: Suggestion) {
   regenerateSuggestion(s.id)
+}
+
+function replaceRefinement(r: { colorId: string, suggestedHex: string }) {
+  palette.updateColor(r.colorId, { hex: r.suggestedHex })
+}
+
+function shuffleRefinement(r: { colorId: string }) {
+  cycleRefinement(r.colorId)
 }
 
 watch(insightGroups, (groups) => {
@@ -584,6 +656,14 @@ button.rs-header:hover {
   color: var(--text-primary);
 }
 
+.rs-ref-actions .rs-sug-btn {
+  width: auto;
+  padding: 0 7px;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
 /* ── Health ── */
 
 .health-score {
@@ -603,5 +683,86 @@ button.rs-header:hover {
   height: 100%;
   border-radius: 99px;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
+}
+
+/* ── Refinements ── */
+
+.rs-refinement {
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--bg-subtle);
+  margin-bottom: 6px;
+}
+
+.rs-ref-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.rs-ref-explain {
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0 0 8px 0;
+}
+
+.rs-ref-compare {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.rs-ref-swatch-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.rs-ref-label {
+  font-size: 8px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rs-ref-swatch {
+  width: 100%;
+  height: 28px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+}
+
+.rs-ref-swatch-refined {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1), 0 0 0 1.5px var(--accent);
+}
+
+.rs-ref-arrow {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.rs-ref-hex {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-tertiary);
+}
+
+.rs-ref-rationale {
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 0 0 6px 0;
+  font-style: italic;
+}
+
+.rs-ref-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
 }
 </style>
