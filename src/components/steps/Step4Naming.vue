@@ -18,13 +18,16 @@
     </div>
 
     <div class="naming-grid">
-      <NamingCard
+      <ColorCard
         v-for="color in palette.colors"
         :key="color.id"
         :color="color"
+        :show-naming="true"
         :open-role-dropdown-id="openRoleDropdownId"
         :taken-roles="takenRoles"
         @update:open-role-dropdown-id="openRoleDropdownId = $event"
+        @remove="palette.removeColor(color.id)"
+        @duplicate="palette.duplicateColor(color.id)"
       />
     </div>
 
@@ -39,7 +42,7 @@ import { usePaletteStore } from '../../stores/palette'
 import { useThemeStore } from '../../stores/theme'
 import type { SemanticRole } from '../../stores/palette'
 import { generateName } from '../../composables/useColorUtils'
-import NamingCard from '../ui/NamingCard.vue'
+import ColorCard from '../ui/ColorCard.vue'
 import TonalSection from '../ui/TonalSection.vue'
 
 const palette = usePaletteStore()

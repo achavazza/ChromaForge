@@ -21,8 +21,10 @@
             src="https://picsum.photos/500/300"
             alt="Preview"
             class="hero-img"
-            :style="imageFilter"
           />
+          <div class="hero-color-overlay" />
+          <div class="hero-shadow-overlay" />
+          <div class="hero-wash-overlay" />
         </div>
       </div>
 
@@ -204,7 +206,7 @@ const cssVars = computed(() => {
   const dark = themeStore.isDark
 
   const bg = findRole('background', dark ? '#0f0f14' : '#f8f9fc')
-  const surface = findRole('surface', dark ? '#1a1a24' : '#ffffff')
+  const surface = findRole('surface', bg)
   const primary = findRole('primary', '#6366f1')
   const secondary = findRole('secondary', '#818cf8')
   const textPrimary = findRole('text-primary', dark ? '#f0f0f8' : '#0f0f14')
@@ -230,16 +232,6 @@ const cssVars = computed(() => {
     '--p-border': border,
     '--p-muted': muted,
   }
-})
-
-const imageFilter = computed(() => {
-  const primary = findRole('primary', '#6366f1')
-  const hex = primary.replace('#', '')
-  const r = parseInt(hex.slice(0,2), 16)
-  const g = parseInt(hex.slice(2,4), 16)
-  const b = parseInt(hex.slice(4,6), 16)
-  const hue = Math.round(Math.atan2(1.732 * (g - b), 2 * r - g - b) * 180 / Math.PI)
-  return { filter: `hue-rotate(${hue}deg) saturate(1.3) brightness(0.85)` }
 })
 
 const previewCards = [
@@ -359,7 +351,26 @@ const previewCards = [
   font-family: inherit;
 }
 
-.hero-image { width: 100%; }
+.hero-image { width: 100%; position: relative; overflow: hidden; border-radius: 12px; }
+.hero-image > div { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; }
+
+.hero-color-overlay {
+  background: linear-gradient(135deg, var(--p-primary) 0%, var(--p-secondary) 60%, transparent 100%);
+  mix-blend-mode: color;
+  opacity: 0.25;
+}
+
+.hero-shadow-overlay {
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--p-primary) 20%, transparent) 70%, color-mix(in srgb, var(--p-primary) 40%, transparent) 100%);
+  mix-blend-mode: multiply;
+  opacity: 0.3;
+}
+
+.hero-wash-overlay {
+  background: linear-gradient(225deg, var(--p-primary) 0%, transparent 50%);
+  mix-blend-mode: soft-light;
+  opacity: 0.2;
+}
 
 .hero-img {
   width: 100%;

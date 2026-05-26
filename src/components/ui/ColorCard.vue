@@ -1,6 +1,5 @@
 <template>
-  <div class="color-card" ref="cardRef">
-    <!-- Top actions / Drag Handle (visible on hover) -->
+  <div class="color-card" :class="{ 'missing-role': showNaming && color.roles.length === 0 }" ref="cardRef">
     <div class="card-top-bar">
       <div class="drag-handle" title="Drag to reorder">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -23,8 +22,8 @@
       </div>
     </div>
 
-    <!-- Color Preview Bar (click to open popup) -->
     <div class="color-preview" :style="{ background: color.hex }" @click="togglePopup">
+      <span class="preview-hex-label" :style="{ color: bestTextColor }">{{ color.hex }}</span>
       <div class="preview-overlay">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
@@ -33,178 +32,44 @@
       </div>
     </div>
 
-    <!-- Color Info Modal -->
-    <Teleport to="body">
-      <div v-if="showPopup" class="modal-overlay" @click="showPopup = false">
-        <div class="color-modal" @click.stop>
-          <button class="modal-close-btn" @click="showPopup = false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
-            </svg>
-          </button>
+    <ColorModal
+      v-if="showPopup"
+      :visible="showPopup"
+      :color="color"
+      mode="edit"
+      :show-roles="false"
+      @close="showPopup = false"
+      @update:hex="(hex) => emit('update', { hex })"
+      @clone="emit('duplicate')"
+      @remove="emit('remove')"
+    />
 
-          <div class="modal-swatch-area" :style="{ background: color.hex }">
-            <div class="modal-swatch-hex">{{ color.hex }}</div>
-          </div>
-
-          <div class="modal-body">
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <span class="modal-info-label">HEX</span>
-                <span class="modal-info-value">{{ color.hex }}</span>
-                <button class="btn btn-ghost btn-icon-xs" @click="copy(color.hex)" title="Copy HEX">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="modal-info-item">
-                <span class="modal-info-label">RGB</span>
-                <span class="modal-info-value">{{ rgbStr }}</span>
-                <button class="btn btn-ghost btn-icon-xs" @click="copy(rgbStr)" title="Copy RGB">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="modal-info-item">
-                <span class="modal-info-label">HSL</span>
-                <span class="modal-info-value">{{ hslStr }}</span>
-                <button class="btn btn-ghost btn-icon-xs" @click="copy(hslStr)" title="Copy HSL">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div class="modal-harmony">
-              <div class="harmony-label">Colors <span class="harmony-hint">(click to add)</span></div>
-              <div class="harmony-groups">
-                <div class="harmony-group">
-                  <span class="harmony-group-label">Complementary</span>
-                  <button class="harmony-dot-btn" @click="openAddWithColor(compHex)" title="Add complementary">
-                    <span class="harmony-dot" :style="{ background: compHex }" />
-                  </button>
-                </div>
-                <div class="harmony-group">
-                  <span class="harmony-group-label">Analogous</span>
-                  <div class="harmony-dot-row">
-                    <button class="harmony-dot-btn" title="Add analogous 1" @click="openAddWithColor(analogousHexes[0])">
-                      <span class="harmony-dot" :style="{ background: analogousHexes[0] }" />
-                    </button>
-                    <button class="harmony-dot-btn" title="Add analogous 2" @click="openAddWithColor(analogousHexes[1])">
-                      <span class="harmony-dot" :style="{ background: analogousHexes[1] }" />
-                    </button>
-                  </div>
-                </div>
-                <div class="harmony-group">
-                  <span class="harmony-group-label">Triadic</span>
-                  <div class="harmony-dot-row">
-                    <button class="harmony-dot-btn" title="Add triadic 1" @click="openAddWithColor(triadicHexes[0])">
-                      <span class="harmony-dot" :style="{ background: triadicHexes[0] }" />
-                    </button>
-                    <button class="harmony-dot-btn" title="Add triadic 2" @click="openAddWithColor(triadicHexes[1])">
-                      <span class="harmony-dot" :style="{ background: triadicHexes[1] }" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="modal-scale">
-              <div class="scale-row">
-                <button
-                  v-for="(t, i) in colorScale"
-                  :key="i"
-                  class="scale-swatch"
-                  :class="{ active: i === activeTonalIndex }"
-                  :style="{ background: t }"
-                  :title="t"
-                  @click="pendingTone = t"
-                />
-              </div>
-              <div v-if="pendingTone" class="scale-confirm">
-                <button class="btn btn-secondary btn-xs" @click="replaceTone">Replace</button>
-                <button class="btn btn-secondary btn-xs" @click="addNewTone">Add</button>
-                <button class="btn btn-ghost btn-icon-xs scale-cancel" @click="pendingTone = null">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div class="modal-actions">
-              <div class="modal-actions-row">
-                <button v-if="hasEyeDropper" class="btn btn-secondary modal-action-btn" @click="pickColor">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2l2 2-8 8H4v-2l8-8z"/><path d="M14 4l6 6M9 15l2 2"/>
-                  </svg>
-                  Color Picker
-                </button>
-                <label class="btn btn-secondary modal-action-btn color-picker-label">
-                  <input
-                    type="color"
-                    :value="color.hex"
-                    class="color-picker-input"
-                    @input="(e) => handleHexChange((e.target as HTMLInputElement).value)"
-                  />
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  Edit
-                </label>
-              </div>
-              <div class="modal-actions-row">
-                <button class="btn btn-secondary modal-action-btn" @click="emit('duplicate')">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                  Clone
-                </button>
-                <button class="btn btn-danger modal-action-btn" @click="emit('remove'); showPopup = false">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
-                  </svg>
-                  Remove
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- Card Body -->
     <div class="card-body">
-      <div class="hex-field">
-        <span class="field-prefix">#</span>
+      <div v-if="showNaming" class="token-row">
+        <span class="token-prefix">--</span>
         <input
-          class="hex-input-field"
-          :value="color.hex.replace('#', '')"
-          @change="(e) => handleHexChange('#' + (e.target as HTMLInputElement).value)"
-          @blur="(e) => handleHexChange('#' + (e.target as HTMLInputElement).value)"
-          maxlength="6"
-          spellcheck="false"
-          :id="`hex-input-${color.id}`"
+          class="token-input"
+          :value="tokenName"
+          @input="(e) => palette.updateColor(color.id, { name: (e.target as HTMLInputElement).value })"
+          placeholder="token-name"
+          :id="`token-${color.id}`"
         />
+        <button class="btn btn-ghost btn-icon-sm" @click="autoName" title="Auto-generate name">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        </button>
       </div>
+
+      <div class="card-hex-display">{{ color.hex }}</div>
 
       <div class="role-select-wrapper" :id="`role-select-${color.id}`" ref="roleSelectRef">
-        <button class="role-select-trigger" @click="roleDropdownOpen = !roleDropdownOpen" type="button">
+        <button class="role-select-trigger" @click="toggleRoleDropdown" type="button">
           <span v-if="color.roles.length === 0" class="role-select-placeholder">No Role</span>
           <span v-else class="role-chips">
             <span v-for="r in color.roles" :key="r" class="role-chip-inline">{{ getRoleLabel(r) }}</span>
           </span>
           <svg class="role-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div v-if="roleDropdownOpen" class="role-dropdown">
+        <div v-if="isRoleDropdownOpen" class="role-dropdown">
           <div v-for="g in roleGroups" :key="g.label" class="role-group-block">
             <div class="role-group-label">{{ g.label }}</div>
             <button
@@ -213,9 +78,9 @@
               class="role-item"
               :class="{
                 assigned: color.roles.includes(r.value),
-                disabled: takenRoles.has(r.value) && !color.roles.includes(r.value)
+                disabled: effectiveTakenRoles.has(r.value) && !color.roles.includes(r.value)
               }"
-              :disabled="takenRoles.has(r.value) && !color.roles.includes(r.value)"
+              :disabled="effectiveTakenRoles.has(r.value) && !color.roles.includes(r.value)"
               @click="toggleRole(r.value)"
             >
               <span class="role-item-icon">
@@ -227,6 +92,17 @@
           </div>
         </div>
       </div>
+
+      <div v-if="showNaming && color.roles.length === 0" class="role-warning">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        No semantic role assigned
+      </div>
+
+      <div v-if="showNaming" class="token-preview-row">
+        <code class="token-preview">--{{ tokenName }}: {{ color.hex.toLowerCase() }}</code>
+      </div>
     </div>
   </div>
 </template>
@@ -235,50 +111,49 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { ColorEntry, SemanticRole } from '../../stores/palette'
 import { usePaletteStore } from '../../stores/palette'
-import { isValidHex } from '../../composables/useColorUtils'
-import chroma from 'chroma-js'
-import { getComplementary, getAnalogous, getTriadic } from '../../composables/useColorHarmony'
-import { generateTonalScaleOKLCH } from '../../composables/useColorUtils'
+import { getBestTextColor, generateName } from '../../composables/useColorUtils'
+import ColorModal from './ColorModal.vue'
 
 const palette = usePaletteStore()
 
 interface Props {
   color: ColorEntry
-  index: number
+  index?: number
+  showNaming?: boolean
+  openRoleDropdownId?: string | null
+  takenRoles?: Set<SemanticRole>
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  index: 0,
+  showNaming: false,
+  openRoleDropdownId: undefined,
+})
+
 const emit = defineEmits<{
   update: [updates: Partial<ColorEntry>]
   remove: []
   duplicate: []
-  previewAdd: [hex: string]
+  'update:openRoleDropdownId': [id: string | null]
 }>()
 
-const takenRoles = computed(() => {
+const showPopup = ref(false)
+const localRoleDropdownOpen = ref(false)
+const roleSelectRef = ref<HTMLElement>()
+
+const isRoleDropdownOpen = computed(() => {
+  if (props.openRoleDropdownId !== undefined) return props.openRoleDropdownId === props.color.id
+  return localRoleDropdownOpen.value
+})
+
+const effectiveTakenRoles = computed(() => {
+  if (props.takenRoles) return props.takenRoles
   const s = new Set<SemanticRole>()
   palette.colors.forEach(c => {
     if (c.id !== props.color.id) c.roles.forEach(r => s.add(r))
   })
   return s
 })
-
-function toggleRole(role: SemanticRole) {
-  const current = [...props.color.roles]
-  const idx = current.indexOf(role)
-  if (idx >= 0) {
-    current.splice(idx, 1)
-  } else {
-    // Remove this role from any other color first
-    palette.colors.forEach(c => {
-      if (c.id !== props.color.id && c.roles.includes(role)) {
-        (c as ColorEntry).roles = c.roles.filter(r => r !== role)
-      }
-    })
-    current.push(role)
-  }
-  emit('update', { roles: current })
-}
 
 const roleGroups: { label: string; roles: { value: SemanticRole; label: string }[] }[] = [
   { label: 'Layout', roles: [{ value: 'background', label: 'Background' }, { value: 'surface', label: 'Surface' }] },
@@ -288,11 +163,8 @@ const roleGroups: { label: string; roles: { value: SemanticRole; label: string }
   { label: 'Neutral', roles: [{ value: 'neutral', label: 'Neutral' }, { value: 'neutral-dark', label: 'Neutral Dark' }, { value: 'neutral-light', label: 'Neutral Light' }] },
 ]
 
-const hasEyeDropper = ref(false)
-const showPopup = ref(false)
-const pendingTone = ref<string | null>(null)
-const roleDropdownOpen = ref(false)
-const roleSelectRef = ref<HTMLElement>()
+const bestTextColor = computed(() => getBestTextColor(props.color.hex))
+const tokenName = computed(() => props.color.name || generateName(props.color.hex, props.color.roles))
 
 function getRoleLabel(role: SemanticRole): string {
   for (const g of roleGroups) {
@@ -302,14 +174,48 @@ function getRoleLabel(role: SemanticRole): string {
   return role
 }
 
+function toggleRole(role: SemanticRole) {
+  const current = [...props.color.roles]
+  const idx = current.indexOf(role)
+  if (idx >= 0) {
+    current.splice(idx, 1)
+  } else {
+    palette.colors.forEach(c => {
+      if (c.id !== props.color.id && c.roles.includes(role)) {
+        (c as ColorEntry).roles = c.roles.filter(r => r !== role)
+      }
+    })
+    current.push(role)
+  }
+  palette.updateColor(props.color.id, { roles: current })
+}
+
+function toggleRoleDropdown() {
+  if (props.openRoleDropdownId !== undefined) {
+    emit('update:openRoleDropdownId', props.openRoleDropdownId === props.color.id ? null : props.color.id)
+  } else {
+    localRoleDropdownOpen.value = !localRoleDropdownOpen.value
+  }
+}
+
+function autoName() {
+  const name = generateName(props.color.hex, props.color.roles)
+  palette.updateColor(props.color.id, { name })
+}
+
 function onClickOutside(e: MouseEvent) {
-  if (roleSelectRef.value && !roleSelectRef.value.contains(e.target as Node)) {
-    roleDropdownOpen.value = false
+  if (props.openRoleDropdownId !== undefined) {
+    if (roleSelectRef.value && !roleSelectRef.value.contains(e.target as Node)) {
+      emit('update:openRoleDropdownId', null)
+    }
+  } else {
+    if (roleSelectRef.value && !roleSelectRef.value.contains(e.target as Node)) {
+      localRoleDropdownOpen.value = false
+    }
   }
 }
 
 onMounted(() => {
-  hasEyeDropper.value = 'EyeDropper' in window
   document.addEventListener('click', onClickOutside)
 })
 
@@ -317,82 +223,8 @@ onUnmounted(() => {
   document.removeEventListener('click', onClickOutside)
 })
 
-function replaceTone() {
-  if (!pendingTone.value) return
-  emit('update', { hex: pendingTone.value })
-  pendingTone.value = null
-}
-
-function addNewTone() {
-  if (!pendingTone.value) return
-  const hex = pendingTone.value
-  pendingTone.value = null
-  openAddWithColor(hex)
-}
-
-onMounted(() => {
-  hasEyeDropper.value = 'EyeDropper' in window
-})
-
 function togglePopup() {
   showPopup.value = !showPopup.value
-}
-
-function openAddWithColor(hex: string) {
-  showPopup.value = false
-  emit('previewAdd', hex)
-}
-
-const compHex = computed(() => getComplementary(props.color.hex))
-const analogousHexes = computed(() => getAnalogous(props.color.hex))
-const triadicHexes = computed(() => getTriadic(props.color.hex))
-const tonalResult = computed(() => generateTonalScaleOKLCH(props.color.hex, 9))
-const colorScale = computed(() => tonalResult.value.scale)
-const activeTonalIndex = computed(() => tonalResult.value.activeIndex)
-
-const rgbStr = computed(() => {
-  try {
-    const [r, g, b] = chroma(props.color.hex).rgb()
-    return `rgb(${r}, ${g}, ${b})`
-  } catch {
-    return 'rgb(0, 0, 0)'
-  }
-})
-
-const hslStr = computed(() => {
-  try {
-    const [h, s, l] = chroma(props.color.hex).hsl()
-    return `hsl(${isNaN(h) ? 0 : Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
-  } catch {
-    return 'hsl(0, 0%, 0%)'
-  }
-})
-
-function handleHexChange(raw: string) {
-  const hex = raw.startsWith('#') ? raw : '#' + raw
-  if (isValidHex(hex)) {
-    emit('update', { hex: hex.toUpperCase() })
-  }
-}
-
-async function pickColor() {
-  if (!('EyeDropper' in window)) return
-  try {
-    // @ts-ignore
-    const eyeDropper = new window.EyeDropper()
-    const result = await eyeDropper.open()
-    handleHexChange(result.sRGBHex)
-  } catch (e) {
-    console.warn('EyeDropper cancelled or failed', e)
-  }
-}
-
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-  } catch (e) {
-    console.warn('Clipboard write failed', e)
-  }
 }
 </script>
 
@@ -409,6 +241,10 @@ async function copy(text: string) {
   width: 100%;
 }
 
+.color-card.missing-role {
+  border-color: var(--warning);
+}
+
 .color-preview {
   width: 100%;
   height: 100px;
@@ -417,6 +253,25 @@ async function copy(text: string) {
   cursor: pointer;
   border-radius: var(--radius) var(--radius) 0 0;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-hex-label {
+  position: relative;
+  z-index: 1;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  transition: opacity 0.15s;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.color-preview:hover .preview-hex-label {
+  opacity: 1;
 }
 
 .color-card:hover {
@@ -489,8 +344,6 @@ async function copy(text: string) {
   opacity: 1;
 }
 
-
-
 .remove-btn:hover {
   color: var(--error) !important;
   background: var(--error-soft) !important;
@@ -503,34 +356,37 @@ async function copy(text: string) {
   gap: 10px;
 }
 
-.hex-field {
+.card-hex-display {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.token-row {
   display: flex;
   align-items: center;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  overflow: hidden;
+  gap: 6px;
 }
 
-.field-prefix {
-  padding: 0 6px 0 8px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
+.token-prefix {
+  font-size: 11px;
   color: var(--text-tertiary);
-  font-weight: 600;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  flex-shrink: 0;
 }
 
-.hex-input-field {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 8px 6px 0;
-  background: transparent;
+.token-input {
+  flex: 1;
+  background: none;
   border: none;
-  outline: none;
+  font-size: 13px;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
   color: var(--text-primary);
-  width: 100%;
-  text-transform: uppercase;
+  outline: none;
+  padding: 2px 0;
+  min-width: 0;
 }
 
 .role-select-wrapper {
@@ -679,5 +535,26 @@ async function copy(text: string) {
 
 .role-item-label {
   flex: 1;
+}
+
+.role-warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--warning);
+  padding: 0 4px;
+}
+
+.token-preview-row {
+  margin-top: 2px;
+}
+
+.token-preview {
+  font-size: 10px;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--text-tertiary);
+  word-break: break-all;
 }
 </style>

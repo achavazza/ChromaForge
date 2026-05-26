@@ -64,7 +64,11 @@
         </button>
         <button class="sidebar-action-btn" @click="downloadPalette" title="Download palette as JSON">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download
+          Download JSON
+        </button>
+        <button class="sidebar-action-btn" @click="downloadPalettePNG" title="Download palette as PNG image">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          Download PNG
         </button>
       </div>
     </div>
@@ -72,23 +76,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useWizardStore } from '../../stores/wizard'
 import { usePaletteStore } from '../../stores/palette'
+import { useThemeStore } from '../../stores/theme'
+import { generateTonalScaleOKLCH } from '../../composables/useColorUtils'
 
 const wizard = useWizardStore()
 const palette = usePaletteStore()
+const theme = useThemeStore()
 
 const visibleSteps = computed(() => wizard.steps.filter(s => s.id !== 3))
 
+const savedLabel = ref('Save Palette')
+
 function savePalette() {
-  const data = JSON.stringify(palette.colors.map(c => ({
-    hex: c.hex,
-    name: c.name,
-    roles: c.roles,
-    locked: c.locked,
-  })))
-  localStorage.setItem('chromaforge-current', data)
+  const hexes = palette.colors.map(c => c.hex)
+  if (!hexes.length) return
+  const name = window.prompt('Name this palette:', `Palette ${Date.now()}`)
+  if (!name) return
+  const saved = JSON.parse(localStorage.getItem('chromaforge-saved') || '[]')
+  saved.push({ label: name, colors: hexes })
+  localStorage.setItem('chromaforge-saved', JSON.stringify(saved))
+  savedLabel.value = 'Saved!'
+  setTimeout(() => { savedLabel.value = 'Save Palette' }, 1500)
 }
 
 function downloadPalette() {
@@ -105,6 +116,109 @@ function downloadPalette() {
   a.download = `chromaforge-palette-${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function downloadPalettePNG() {
+  const colors = palette.colors
+  if (!colors.length) return
+  const dark = theme.isDark
+
+  const PAD = 28
+  const SW = 56
+  const SR = 8
+  const GAP = 16
+  const SCALE_H = 14
+  const SCALE_W = 22
+  const SCALE_GAP = 2
+  const ROW_H = SW + 8 + SCALE_H + 18
+  const SEP_Y = 80
+  const W = 820
+  const TEXT_X = PAD + SW + GAP
+  const HEX_W = 130
+  const NAME_W = 150
+
+  const bgColor = dark ? '#13131e' : '#f4f4f8'
+  const textColor = dark ? '#e8e8f4' : '#1a1a24'
+  const mutedColor = dark ? '#7878a0' : '#7878a0'
+  const nameColor = dark ? '#b8b8d0' : '#4a4a60'
+  const sepColor = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'
+  const borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
+  const scaleBorder = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'
+
+  const headerEnd = SEP_Y + 16
+  const h = headerEnd + colors.length * ROW_H + PAD
+  const canvas = document.createElement('canvas')
+  canvas.width = W * 2
+  canvas.height = h * 2
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(2, 2)
+
+  ctx.fillStyle = bgColor
+  ctx.fillRect(0, 0, W, h)
+
+  ctx.fillStyle = textColor
+  ctx.font = 'bold 20px Inter, system-ui, sans-serif'
+  ctx.fillText('ChromaForge Palette', PAD, PAD + 18)
+  ctx.fillStyle = mutedColor
+  ctx.font = '12px Inter, system-ui, sans-serif'
+  ctx.fillText(`${colors.length} color${colors.length !== 1 ? 's' : ''} · ${new Date().toLocaleDateString()}`, PAD, PAD + 38)
+
+  ctx.strokeStyle = sepColor
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(PAD, SEP_Y)
+  ctx.lineTo(W - PAD, SEP_Y)
+  ctx.stroke()
+
+  let y = headerEnd
+
+  for (const c of colors) {
+    const rowY = y
+
+    ctx.beginPath()
+    ctx.roundRect(PAD, rowY, SW, SW, SR)
+    ctx.fillStyle = c.hex
+    ctx.fill()
+    ctx.strokeStyle = borderColor
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    ctx.fillStyle = textColor
+    ctx.font = 'bold 13px SF Mono, JetBrains Mono, monospace'
+    ctx.fillText(c.hex, TEXT_X, rowY + 16)
+
+    ctx.fillStyle = nameColor
+    ctx.font = '13px Inter, system-ui, sans-serif'
+    ctx.fillText(c.name || '—', TEXT_X + HEX_W, rowY + 16)
+
+    ctx.fillStyle = mutedColor
+    ctx.font = '12px Inter, system-ui, sans-serif'
+    const roleStr = c.roles.length ? c.roles.join(', ') : '\u2014'
+    ctx.fillText(roleStr, TEXT_X + HEX_W + NAME_W, rowY + 16)
+
+    const scaleY = rowY + SW + 8
+    const { scale } = generateTonalScaleOKLCH(c.hex, 9)
+    for (let si = 0; si < scale.length; si++) {
+      const sx = PAD + si * (SCALE_W + SCALE_GAP)
+      ctx.fillStyle = scale[si]
+      ctx.fillRect(sx, scaleY, SCALE_W, SCALE_H)
+      ctx.strokeStyle = scaleBorder
+      ctx.lineWidth = 0.5
+      ctx.strokeRect(sx, scaleY, SCALE_W, SCALE_H)
+    }
+
+    y += ROW_H
+  }
+
+  canvas.toBlob(b => {
+    if (!b) return
+    const url = URL.createObjectURL(b)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `chromaforge-palette-${Date.now()}.png`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, 'image/png')
 }
 </script>
 

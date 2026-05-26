@@ -48,7 +48,6 @@
           @update="(updates) => palette.updateColor(color.id, updates)"
           @remove="palette.removeColor(color.id)"
           @duplicate="palette.duplicateColor(color.id)"
-          @preview-add="openAddPreviewWith"
         />
       </VueDraggable>
     </div>
@@ -111,80 +110,14 @@
       </div>
     </div>
 
-    <!-- Add Color Preview Modal -->
-    <Teleport to="body">
-      <div v-if="showAddPreview" class="modal-overlay" @click="showAddPreview = false">
-        <div class="color-modal" @click.stop>
-          <button class="modal-close-btn" @click="showAddPreview = false">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
-            </svg>
-          </button>
-          <div class="modal-swatch-area" :style="{ background: addPreviewHex }">
-            <div class="modal-swatch-hex">{{ addPreviewHex }}</div>
-          </div>
-          <div class="modal-body">
-            <div class="modal-info-grid">
-              <div class="modal-info-item">
-                <span class="modal-info-label">HEX</span>
-                <span class="modal-info-value">{{ addPreviewHex }}</span>
-                <button class="btn btn-ghost btn-icon-xs" @click="copy(addPreviewHex)" title="Copy HEX">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="modal-info-item">
-                <span class="modal-info-label">RGB</span>
-                <span class="modal-info-value">{{ getRGB(addPreviewHex) }}</span>
-                <button class="btn btn-ghost btn-icon-xs" @click="copy(getRGB(addPreviewHex))" title="Copy RGB">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="modal-info-item">
-                <span class="modal-info-label">HSL</span>
-                <span class="modal-info-value">{{ getHSL(addPreviewHex) }}</span>
-                <button class="btn btn-ghost btn-icon-xs" @click="copy(getHSL(addPreviewHex))" title="Copy HSL">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="modal-actions">
-              <div class="modal-actions-row">
-                <label class="btn btn-secondary modal-action-btn color-picker-label">
-                  <input
-                    type="color"
-                    :value="addPreviewHex"
-                    class="color-picker-input"
-                    @input="(e) => addPreviewHex = (e.target as HTMLInputElement).value.toUpperCase()"
-                  />
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  Picker
-                </label>
-              </div>
-              <div class="modal-actions-row">
-                <button class="btn btn-primary modal-action-btn" @click="confirmAddPreview" style="flex:1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  Add to Palette
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <ColorModal
+      v-if="showAddPreview"
+      :visible="showAddPreview"
+      :hex="addPreviewHex"
+      mode="preview"
+      @close="showAddPreview = false"
+      @add="(hex) => { palette.addColor(hex); showAddPreview = false }"
+    />
 
     <!-- Import Modal -->
     <ImportModal v-if="showImport" @close="showImport = false" @import="onImport" />
@@ -195,10 +128,10 @@
 import { ref } from 'vue'
 import { usePaletteStore } from '../../stores/palette'
 import ColorCard from '../ui/ColorCard.vue'
+import ColorModal from '../ui/ColorModal.vue'
 import ImportModal from '../ui/ImportModal.vue'
 import { parseHexInput } from '../../composables/useColorUtils'
 import { VueDraggable } from 'vue-draggable-plus'
-import chroma from 'chroma-js'
 
 interface SavedPalette {
   label: string
@@ -240,42 +173,6 @@ function clearAll() {
 function openAddPreview() {
   addPreviewHex.value = '#6366F1'
   showAddPreview.value = true
-}
-
-function openAddPreviewWith(hex: string) {
-  addPreviewHex.value = hex
-  showAddPreview.value = true
-}
-
-function confirmAddPreview() {
-  palette.addColor(addPreviewHex.value)
-  showAddPreview.value = false
-}
-
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-  } catch (e) {
-    console.warn('Clipboard write failed', e)
-  }
-}
-
-function getRGB(hex: string) {
-  try {
-    const [r, g, b] = chroma(hex).rgb()
-    return `rgb(${r}, ${g}, ${b})`
-  } catch {
-    return 'rgb(0, 0, 0)'
-  }
-}
-
-function getHSL(hex: string) {
-  try {
-    const [h, s, l] = chroma(hex).hsl()
-    return `hsl(${isNaN(h) ? 0 : Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
-  } catch {
-    return 'hsl(0, 0%, 0%)'
-  }
 }
 
 function onImport(raw: string) {
