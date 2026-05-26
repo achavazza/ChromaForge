@@ -25,6 +25,7 @@
         :show-naming="true"
         :open-role-dropdown-id="openRoleDropdownId"
         :taken-roles="takenRoles"
+        @update="(updates) => palette.updateColor(color.id, updates)"
         @update:open-role-dropdown-id="openRoleDropdownId = $event"
         @remove="palette.removeColor(color.id)"
         @duplicate="palette.duplicateColor(color.id)"
@@ -139,7 +140,7 @@ function autoAssignRoles() {
 
 .naming-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
 }
 </style>

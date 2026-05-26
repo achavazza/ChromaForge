@@ -126,6 +126,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import chroma from 'chroma-js'
 import { usePaletteStore } from '../../stores/palette'
 import ColorCard from '../ui/ColorCard.vue'
 import ColorModal from '../ui/ColorModal.vue'
@@ -171,7 +172,7 @@ function clearAll() {
 }
 
 function openAddPreview() {
-  addPreviewHex.value = '#6366F1'
+  addPreviewHex.value = chroma.random().hex()
   showAddPreview.value = true
 }
 

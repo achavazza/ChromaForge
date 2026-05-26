@@ -83,6 +83,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import chroma from 'chroma-js'
 import { VueDraggable } from 'vue-draggable-plus'
 import { usePaletteStore } from '../../stores/palette'
 import type { ColorEntry } from '../../stores/palette'
@@ -99,7 +100,7 @@ function openModal(color: ColorEntry) {
 }
 
 function openAddModal() {
-  newColorHex.value = '#6366F1'
+  newColorHex.value = chroma.random().hex()
   showAddModal.value = true
 }
 </script>

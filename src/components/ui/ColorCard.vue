@@ -23,13 +23,16 @@
     </div>
 
     <div class="color-preview" :style="{ background: color.hex }" @click="togglePopup">
+      <!--
       <span class="preview-hex-label" :style="{ color: bestTextColor }">{{ color.hex }}</span>
+      
       <div class="preview-overlay">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2m0 16v2m9-9h-2M5 12H3"/>
         </svg>
       </div>
+      -->
     </div>
 
     <ColorModal
@@ -205,7 +208,7 @@ function autoName() {
 
 function onClickOutside(e: MouseEvent) {
   if (props.openRoleDropdownId !== undefined) {
-    if (roleSelectRef.value && !roleSelectRef.value.contains(e.target as Node)) {
+    if (props.openRoleDropdownId === props.color.id && roleSelectRef.value && !roleSelectRef.value.contains(e.target as Node)) {
       emit('update:openRoleDropdownId', null)
     }
   } else {

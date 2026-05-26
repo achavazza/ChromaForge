@@ -225,7 +225,9 @@ const emit = defineEmits<{
 const palette = usePaletteStore()
 
 const displayHex = computed(() => {
+  if (pendingTone.value) return pendingTone.value
   if (props.mode === 'edit' && props.color) return props.color.hex
+  if (props.mode === 'preview' && localHex.value) return localHex.value
   return props.hex || '#6366F1'
 })
 
@@ -236,6 +238,7 @@ const pendingTone = ref<string | null>(null)
 const editingField = ref<'hex' | 'rgb' | 'hsl' | null>(null)
 const editBuffer = ref('')
 const editInputRef = ref<HTMLInputElement>()
+const localHex = ref('')
 
 const roleGroups: { label: string; roles: { value: SemanticRole; label: string }[] }[] = [
   { label: 'Layout', roles: [{ value: 'background', label: 'Background' }, { value: 'surface', label: 'Surface' }] },
@@ -313,7 +316,10 @@ function handleHexChange(raw: string) {
   try {
     const valid = chroma(hex).hex().toUpperCase()
     if (props.mode === 'edit' && props.color) {
+      palette.updateColor(props.color.id, { hex: valid })
       emit('update:hex', valid)
+    } else if (props.mode === 'preview') {
+      localHex.value = valid
     }
   } catch { /* invalid */ }
 }
@@ -343,7 +349,14 @@ function commitEdit() {
       }
     }
   } catch { /* invalid */ }
-  if (hex && hex !== displayHex.value && props.mode === 'edit') emit('update:hex', hex)
+  if (hex && hex !== displayHex.value) {
+    if (props.mode === 'edit' && props.color) {
+      palette.updateColor(props.color.id, { hex })
+      emit('update:hex', hex)
+    } else if (props.mode === 'preview') {
+      localHex.value = hex
+    }
+  }
   editingField.value = null
 }
 
@@ -364,7 +377,12 @@ async function pickColor() {
 
 function replaceTone() {
   if (!pendingTone.value) return
-  if (props.mode === 'edit' && props.color) emit('update:hex', pendingTone.value)
+  if (props.mode === 'edit' && props.color) {
+    palette.updateColor(props.color.id, { hex: pendingTone.value })
+    emit('update:hex', pendingTone.value)
+  } else if (props.mode === 'preview') {
+    localHex.value = pendingTone.value
+  }
   pendingTone.value = null
 }
 
@@ -522,6 +540,6 @@ function addHarmonyColor(hex: string) {
 .modal-action-btn.btn-danger {
   border-color: var(--error);
 }
-.color-picker-label { position: relative; cursor: pointer; }
-.color-picker-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.color-picker-label { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.color-picker-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 </style>

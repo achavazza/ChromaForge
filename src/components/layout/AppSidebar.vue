@@ -86,7 +86,7 @@ const wizard = useWizardStore()
 const palette = usePaletteStore()
 const theme = useThemeStore()
 
-const visibleSteps = computed(() => wizard.steps.filter(s => s.id !== 3))
+const visibleSteps = computed(() => wizard.steps)
 
 const savedLabel = ref('Save Palette')
 

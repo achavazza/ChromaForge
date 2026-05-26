@@ -14,9 +14,8 @@ export const useWizardStore = defineStore('wizard', () => {
   const steps = ref<WizardStep[]>([
     { id: 1, title: 'Palette Builder', description: 'Create your color palette', icon: 'palette', completed: false },
     { id: 2, title: 'Naming & Tokens', description: 'Semantic refinement', icon: 'tag', completed: false },
-    { id: 3, title: 'Analysis', description: 'Smart suggestions & health', icon: 'sparkles', completed: false },
-    { id: 4, title: 'Contrast & WCAG', description: 'Accessibility testing', icon: 'shield', completed: false },
-    { id: 5, title: 'Preview & Export', description: 'Live preview & export', icon: 'eye', completed: false },
+    { id: 3, title: 'Contrast & WCAG', description: 'Accessibility testing', icon: 'shield', completed: false },
+    { id: 4, title: 'Preview & Export', description: 'Live preview & export', icon: 'eye', completed: false },
   ])
 
   function goTo(stepId: number) {
@@ -26,7 +25,7 @@ export const useWizardStore = defineStore('wizard', () => {
   }
 
   function next() {
-    if (currentStep.value < 5) {
+    if (currentStep.value < 4) {
       const step = steps.value.find(s => s.id === currentStep.value)
       if (step) step.completed = true
       currentStep.value++
