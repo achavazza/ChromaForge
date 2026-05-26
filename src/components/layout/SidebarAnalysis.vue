@@ -5,7 +5,7 @@
       <div class="rs-panel">
         <div class="rs-header">
           <span class="rs-title">Palette Health</span>
-          <span class="health-score" :style="{ color: healthColor }">{{ healthScore }}%</span>
+          <span class="health-score" :style="{ color: healthColor }" title="Calculated from palette issues only: -20 per critical issue, -10 per warning, -3 per info. Independent of composite scores above.">{{ healthScore }}%</span>
         </div>
         <div class="rs-body">
           <div class="health-bar-track">
@@ -22,21 +22,21 @@
         <div class="rs-body">
           <div class="rs-scores">
             <div class="rs-score-row">
-              <span class="rs-score-label">UI Practicality</span>
+              <span class="rs-score-label" title="Can this palette actually be used in UI? Checks for essential roles (background, text, primary), neutral tones, and sufficient luminance range.">UI Practicality</span>
               <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.practicality)} 18%, transparent)` }">
                 <div class="rs-score-bar-fill practicality" :style="{ width: scores.practicality + '%' , background: scoreColor(scores.practicality) }" />
               </div>
               <span class="rs-score-value" :style="{ color: scoreColor(scores.practicality) }">{{ scores.practicality }}</span>
             </div>
             <div class="rs-score-row">
-              <span class="rs-score-label">Cohesion</span>
+              <span class="rs-score-label" title="How well do the colors work together? Measures average DeltaE distance and saturation variance — values too close or too far apart reduce cohesion.">Cohesion</span>
               <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.cohesion)} 18%, transparent)` }">
                 <div class="rs-score-bar-fill cohesion" :style="{ width: scores.cohesion + '%', background: scoreColor(scores.cohesion) }" />
               </div>
               <span class="rs-score-value" :style="{ color: scoreColor(scores.cohesion) }">{{ scores.cohesion }}</span>
             </div>
             <div class="rs-score-row">
-              <span class="rs-score-label">Fatigue Resist.</span>
+              <span class="rs-score-label" title="Will this palette cause eye strain? Penalizes highly saturated colors, extreme luminance ranges (pure black/white), and extreme contrast ratios (>12:1 or <2:1) in approved pairings.">Fatigue Resist.</span>
               <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.fatigue)} 18%, transparent)` }">
                 <div class="rs-score-bar-fill fatigue" :style="{ width: scores.fatigue + '%', background: scoreColor(scores.fatigue) }" />
               </div>
@@ -165,11 +165,13 @@ const palette = usePaletteStore()
 const themeStore = useThemeStore()
 const { issues, suggestions, healthScore, regenerateSuggestion } = usePaletteAnalysis(
   () => palette.colors,
-  () => themeStore.isDark
+  () => themeStore.isDark,
+  () => palette.contrastPairs
 )
 const { scores, insightGroups } = useAdvancedAnalysis(
   () => palette.colors,
-  () => themeStore.isDark
+  () => themeStore.isDark,
+  () => palette.contrastPairs
 )
 
 const openPanels = ref<Record<string, boolean>>({

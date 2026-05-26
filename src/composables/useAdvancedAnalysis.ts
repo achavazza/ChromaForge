@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import chroma from 'chroma-js'
-import type { ColorEntry } from '../stores/palette'
+import type { ColorEntry, ContrastPair } from '../stores/palette'
 
 export type InsightSeverity = 'critical' | 'warning' | 'info' | 'success'
 
@@ -25,10 +25,12 @@ export interface PaletteScores {
 
 export function useAdvancedAnalysis(
   colorsGetter: () => ColorEntry[],
-  isDark?: () => boolean
+  isDark?: () => boolean,
+  contrastPairsGetter?: () => ContrastPair[]
 ) {
   const colors = computed(() => colorsGetter())
   const darkMode = computed(() => isDark?.() ?? false)
+  const contrastPairs = computed(() => contrastPairsGetter?.() ?? [])
 
   const insights = computed<PaletteInsight[]>(() => {
     const result: PaletteInsight[] = []
@@ -131,8 +133,9 @@ export function useAdvancedAnalysis(
     }
 
     // ── 7. Lack of Neutrals ──────────────────────────────
-    const neutrals = hexes.filter(h => chroma(h).get('hsl.s') < 0.15)
-    if (neutrals.length < 2 && hexes.length >= 3) {
+    const roleNeutrals = cs.filter(c => c.roles.some(r => ['neutral', 'neutral-light', 'neutral-dark', 'muted', 'border', 'surface', 'background'].includes(r)))
+    const actualNeutrals = hexes.filter(h => chroma(h).get('hsl.s') < 0.15)
+    if (roleNeutrals.length < 2 && actualNeutrals.length < 2 && hexes.length >= 3) {
       result.push({
         id: 'no-neutrals',
         title: 'Missing neutral tones',
@@ -219,42 +222,25 @@ export function useAdvancedAnalysis(
     }
 
     // ── 13. Dark Mode Readiness ──────────────────────────
-    if (darkMode.value) {
-      const weakAccents = cs.filter(c => {
-        const role = c.roles[0]
-        if (!role || role === 'background' || role === 'surface') return false
-        const bg = cs.find(x => x.roles.includes('background'))
-        if (!bg) return false
-        const cr = chroma.contrast(c.hex, bg.hex)
-        return cr < 3
+    const foregroundRoles = ['text-primary', 'text-secondary', 'muted', 'border', 'error', 'success', 'warning', 'info']
+    const weakAccents = cs.filter(c => {
+      const role = c.roles[0]
+      if (!role || !foregroundRoles.includes(role)) return false
+      const bg = cs.find(x => x.roles.includes('background'))
+      if (!bg) return false
+      const cr = chroma.contrast(c.hex, bg.hex)
+      return cr < 3
+    })
+    if (weakAccents.length > 0) {
+      const modeLabel = darkMode.value ? 'dark' : 'light'
+      const modeLabel2 = darkMode.value ? 'lightening' : 'darkening'
+      result.push({
+        id: darkMode.value ? 'dark-readiness' : 'light-readiness',
+        title: `Low contrast in ${modeLabel} mode`,
+        description: `${weakAccents.length} foreground color${weakAccents.length > 1 ? 's' : ''} lack contrast against the ${modeLabel} background (contrast < 3:1). Consider ${modeLabel2} them for better readability.`,
+        severity: 'warning',
+        category: 'readiness',
       })
-      if (weakAccents.length > 0) {
-        result.push({
-          id: 'dark-readiness',
-          title: 'Low contrast in dark mode',
-          description: `${weakAccents.length} accent colors lose visibility against the dark background (contrast < 3:1). Consider lightening them for better readability.`,
-          severity: 'warning',
-          category: 'readiness',
-        })
-      }
-    } else {
-      const weakAccents = cs.filter(c => {
-        const role = c.roles[0]
-        if (!role || role === 'background' || role === 'surface') return false
-        const bg = cs.find(x => x.roles.includes('background'))
-        if (!bg) return false
-        const cr = chroma.contrast(c.hex, bg.hex)
-        return cr < 3
-      })
-      if (weakAccents.length > 0) {
-        result.push({
-          id: 'light-readiness',
-          title: 'Low contrast in light mode',
-          description: `${weakAccents.length} accent colors have low contrast against the light background. They may be hard to read.`,
-          severity: 'warning',
-          category: 'readiness',
-        })
-      }
     }
 
     // ── 14. Token Completeness ───────────────────────────
@@ -273,7 +259,22 @@ export function useAdvancedAnalysis(
       })
     }
 
-    // ── 15. Hierarchy Problems (all colors same weight) ──
+    // ── 15. Approved pairings that fail WCAG ─────────────
+    const approved = contrastPairs.value.filter(p => p.approved)
+    if (approved.length > 0) {
+      const failing = approved.filter(p => !p.wcagAA)
+      if (failing.length > 0) {
+        result.push({
+          id: 'approved-fail',
+          title: 'Approved pairings fail contrast',
+          description: `${failing.length}/${approved.length} relevant pairings fail WCAG AA. Marking them as relevant won't fix contrast — consider adjusting those colors.`,
+          severity: failing.length >= approved.length * 0.5 ? 'critical' : 'warning',
+          category: 'accessibility',
+        })
+      }
+    }
+
+    // ── 16. Hierarchy Problems (all colors same weight) ──
     if (hexes.length >= 3) {
       const luminances = hexes.map(h => chroma(h).luminance())
       const lMean = luminances.reduce((a, b) => a + b, 0) / luminances.length
@@ -344,6 +345,24 @@ export function useAdvancedAnalysis(
       return l < 0.02 || l > 0.95
     }).length
     fatigue -= extremeRatios * 5
+
+    // Approved pairings factor
+    const approved = contrastPairs.value.filter(p => p.approved)
+    if (approved.length > 0) {
+      const failing = approved.filter(p => !p.wcagAA)
+      const passing = approved.filter(p => p.wcagAA)
+      const failRatio = failing.length / approved.length
+      const extremePairs = approved.filter(p => p.ratio > 12 || p.ratio < 2).length
+
+      // Failing approved pairs hurts Practicality
+      practicality -= Math.round(failRatio * 20)
+      // All approved pass AA → bonus
+      if (failRatio === 0) practicality += 10
+
+      // Fatigue: extreme ratio pairs hurt; many passing pairs help
+      fatigue -= Math.round((extremePairs / approved.length) * 10)
+      if (passing.length >= approved.length * 0.8) fatigue += 8
+    }
 
     return {
       practicality: Math.max(0, practicality),

@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import type { ColorEntry } from '../stores/palette'
+import type { ColorEntry, ContrastPair } from '../stores/palette'
 import {
   getLuminance, getSaturation,
   getColorTemperature, getContrastRatio,
@@ -36,7 +36,7 @@ const SEMANTIC_RANGES: Record<string, [number, number]> = {
   'info': [220, 260],
 }
 
-export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: () => boolean) {
+export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: () => boolean, contrastPairsGetter?: () => ContrastPair[]) {
 
   const issues = computed<PaletteIssue[]>(() => {
     const cs = colorsGetter()
@@ -127,10 +127,16 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
     }
 
     const cs2 = cs
+    const pairs = contrastPairsGetter?.() ?? []
+    const approved = pairs.filter(p => p.approved)
     let failCount = 0
-    for (let i = 0; i < cs2.length; i++) {
-      for (let j = i + 1; j < cs2.length; j++) {
-        if (getContrastRatio(cs2[i].hex, cs2[j].hex) < 4.5) failCount++
+    if (approved.length > 0) {
+      failCount = approved.filter(p => !p.wcagAA).length
+    } else {
+      for (let i = 0; i < cs2.length; i++) {
+        for (let j = i + 1; j < cs2.length; j++) {
+          if (getContrastRatio(cs2[i].hex, cs2[j].hex) < 4.5) failCount++
+        }
       }
     }
     if (failCount > 0) {
@@ -138,7 +144,7 @@ export function usePaletteAnalysis(colorsGetter: () => ColorEntry[], isDark?: ()
         id: 'wcag-fails',
         severity: failCount > 5 ? 'critical' : 'warning',
         title: 'Accessibility Issues',
-        description: `${failCount} color pair${failCount !== 1 ? 's' : ''} fail WCAG AA requirements (4.5:1 contrast ratio).`,
+        description: `${failCount} relevant color pair${failCount !== 1 ? 's' : ''} fail WCAG AA requirements (4.5:1 contrast ratio).`,
         suggestion: 'Review the Contrast & WCAG step to identify and fix failing pairs.',
         affectedIds: [],
       })
