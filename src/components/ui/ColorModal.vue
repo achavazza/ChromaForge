@@ -65,6 +65,24 @@
             </div>
           </div>
 
+          <div class="modal-hsl-sliders">
+            <div class="hsl-slider-row">
+              <span class="hsl-slider-label">H</span>
+              <input type="range" min="0" max="360" :value="sliderH" class="hsl-range hue-range" @input="onSlider($event, 'h')" />
+              <span class="hsl-slider-val">{{ sliderH }}°</span>
+            </div>
+            <div class="hsl-slider-row">
+              <span class="hsl-slider-label">S</span>
+              <input type="range" min="0" max="100" :value="sliderS" class="hsl-range sat-range" @input="onSlider($event, 's')" />
+              <span class="hsl-slider-val">{{ sliderS }}%</span>
+            </div>
+            <div class="hsl-slider-row">
+              <span class="hsl-slider-label">L</span>
+              <input type="range" min="0" max="100" :value="sliderL" class="hsl-range lit-range" @input="onSlider($event, 'l')" />
+              <span class="hsl-slider-val">{{ sliderL }}%</span>
+            </div>
+          </div>
+
           <div v-if="showRoles && mode === 'edit' && color" class="modal-role-section">
             <div class="role-select-wrapper" ref="roleSelectRef">
               <button class="role-select-trigger" @click="roleDropdownOpen = !roleDropdownOpen" type="button">
@@ -190,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import chroma from 'chroma-js'
 import type { ColorEntry, SemanticRole } from '../../stores/palette'
 import { usePaletteStore } from '../../stores/palette'
@@ -239,6 +257,40 @@ const editingField = ref<'hex' | 'rgb' | 'hsl' | null>(null)
 const editBuffer = ref('')
 const editInputRef = ref<HTMLInputElement>()
 const localHex = ref('')
+
+const sliderH = ref(0)
+const sliderS = ref(0)
+const sliderL = ref(0)
+
+function syncSlidersFromHex(hex: string) {
+  try {
+    const c = chroma(hex)
+    const [h, s, l] = c.hsl()
+    sliderH.value = isNaN(h) ? 0 : Math.round(h)
+    sliderS.value = Math.round((isNaN(s) ? 0 : s) * 100)
+    sliderL.value = Math.round((isNaN(l) ? 0 : l) * 100)
+  } catch {
+    sliderH.value = 0; sliderS.value = 0; sliderL.value = 0
+  }
+}
+
+watch(displayHex, (val) => { syncSlidersFromHex(val) }, { immediate: true })
+
+function onSlider(e: Event, channel: 'h' | 's' | 'l') {
+  const v = Number((e.target as HTMLInputElement).value)
+  if (channel === 'h') sliderH.value = v
+  else if (channel === 's') sliderS.value = v
+  else sliderL.value = v
+  try {
+    const hex = chroma(sliderH.value, sliderS.value / 100, sliderL.value / 100, 'hsl').hex().toUpperCase()
+    if (props.mode === 'edit' && props.color) {
+      palette.updateColor(props.color.id, { hex })
+      emit('update:hex', hex)
+    } else if (props.mode === 'preview') {
+      localHex.value = hex
+    }
+  } catch { /* ignore */ }
+}
 
 const roleGroups: { label: string; roles: { value: SemanticRole; label: string }[] }[] = [
   { label: 'Layout', roles: [{ value: 'background', label: 'Background' }, { value: 'surface', label: 'Surface' }] },
@@ -434,8 +486,8 @@ function addHarmonyColor(hex: string) {
 }
 .modal-info-item {
   display: flex; align-items: center; gap: 8px;
-  background: var(--bg-secondary); padding: 6px 10px; border-radius: 6px;
-  border: 1px solid #eee;
+  background: var(--bg-subtle); padding: 6px 10px; border-radius: 6px;
+  border: 1px solid var(--border-default);
 }
 .modal-info-label {
   font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -460,16 +512,45 @@ function addHarmonyColor(hex: string) {
   padding: 2px 6px; font-size: 11px; color: var(--text-secondary);
   background: none; border: none; cursor: pointer; border-radius: 4px;
 }
-.modal-copy-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.modal-copy-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .copy-label { font-size: 10px; }
 .modal-info-item:hover .modal-copy-btn { opacity: 1; }
+
+.modal-hsl-sliders {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-bottom: 12px; padding: 8px 10px;
+  background: var(--bg-subtle); border-radius: 6px;
+  border: 1px solid var(--border-default);
+}
+.hsl-slider-row {
+  display: flex; align-items: center; gap: 6px;
+}
+.hsl-slider-label {
+  width: 14px; font-size: 10px; font-weight: 700; color: var(--text-secondary);
+  text-align: right; flex-shrink: 0;
+}
+.hsl-range {
+  flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+  background: var(--border-strong); border-radius: 99px; outline: none;
+  cursor: pointer; min-width: 0;
+}
+.hsl-range::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--accent);
+  border: 2px solid var(--bg-primary); cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.hsl-slider-val {
+  width: 36px; font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-tertiary); text-align: right; flex-shrink: 0;
+}
 
 .modal-role-section { margin-bottom: 12px; }
 .role-select-wrapper { position: relative; }
 .role-select-trigger {
   display: flex; align-items: center; justify-content: space-between; gap: 6px;
   width: 100%; padding: 8px 10px;
-  background: var(--bg-secondary); border: 1px solid var(--border-primary);
+  background: var(--bg-subtle); border: 1px solid var(--border-default);
   border-radius: 6px; cursor: pointer; color: var(--text-primary);
   font-size: 12px; transition: border-color 0.1s;
 }

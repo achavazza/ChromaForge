@@ -406,25 +406,25 @@ export function useAdvancedAnalysis(
     const cs = colors.value
     if (cs.length < 2) return []
     const hexes = cs.map(c => c.hex)
-    const saturations = hexes.map(h => chroma(h).get('hsl.s'))
-    const satMean = saturations.reduce((a, b) => a + b, 0) / saturations.length
+    const chromas = hexes.map(h => chroma(h).get('oklch.c'))
+    const chromaMean = chromas.reduce((a, b) => a + b, 0) / chromas.length
 
     const result: ColorRefinement[] = []
     for (let i = 0; i < cs.length; i++) {
-      const sat = saturations[i]
-      if (sat > satMean * 1.8 && sat > 0.5) {
+      const ch = chromas[i]
+      if (ch > chromaMean * 2 && ch > 0.08) {
         const variantIdx = refinementVariants.value.get(cs[i].id) || 0
-        const suggestedHex = computeRefinementHex(cs[i].hex, variantIdx, satMean)
-        const chromaBefore = chroma(cs[i].hex).get('hsl.s')
-        const chromaAfter = chroma(suggestedHex).get('hsl.s')
-        const hueBefore = (chroma(cs[i].hex).get('hsl.h') || 0 + 360) % 360
-        const hueAfter = (chroma(suggestedHex).get('hsl.h') || 0 + 360) % 360
+        const suggestedHex = computeRefinementHex(cs[i].hex, variantIdx, chromaMean * 2.5)
+        const chromaBefore = chroma(cs[i].hex).get('oklch.c')
+        const chromaAfter = chroma(suggestedHex).get('oklch.c')
+        const hueBefore = (chroma(cs[i].hex).get('oklch.h') || 0 + 360) % 360
+        const hueAfter = (chroma(suggestedHex).get('oklch.h') || 0 + 360) % 360
         result.push({
           colorId: cs[i].id,
           currentHex: cs[i].hex,
           suggestedHex,
           title: `${cs[i].name || 'Color'} is over-saturated`,
-          explanation: `This color is ${Math.round((sat / satMean) * 100)}% more saturated than the palette average, creating visual tension.`,
+          explanation: `This color is ${Math.round((ch / chromaMean) * 100)}% more vivid than the palette average, creating visual tension.`,
           rationale: `The refined version preserves hue identity (${Math.round(hueBefore)}° → ${Math.round(hueAfter)}°) while reducing chroma by ${Math.round((1 - chromaAfter / chromaBefore) * 100)}% to harmonize with the rest of the palette.`,
           huePreserved: Math.abs(hueBefore - hueAfter) < 15 || Math.abs(hueBefore - hueAfter) > 345,
           chromaReduction: Math.round(Math.max(0, 1 - chromaAfter / chromaBefore) * 100),

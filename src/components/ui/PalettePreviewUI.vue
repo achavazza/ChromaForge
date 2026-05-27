@@ -522,8 +522,8 @@ const previewCards = [
   border-radius: 5px;
   font-size: 11px;
   border: 1px solid var(--p-border, rgba(255,255,255,0.1));
-  color: var(--p-text);
-  background: color-mix(in srgb, var(--p-bg) 75%, transparent);
+  color: var(--text-tertiary);
+  background: color-mix(in srgb, var(--bg-base) 92%, var(--border-default) 8%);
 }
 
 .form-input.focused {

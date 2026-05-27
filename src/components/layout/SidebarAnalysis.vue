@@ -652,7 +652,7 @@ button.rs-header:hover {
 }
 
 .rs-sug-btn:hover {
-  background: var(--bg-secondary);
+  background: var(--bg-subtle);
   color: var(--text-primary);
 }
 

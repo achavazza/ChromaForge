@@ -6,11 +6,26 @@ export function isValidHex(hex: string): boolean {
 }
 
 export function parseHexInput(raw: string): string[] {
+  const trimmed = raw.trim()
+  // Detect JSON array format: ["#hex","#hex",...]
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(t => String(t).trim())
+          .filter(t => t.length > 0)
+          .map(t => t.startsWith('#') ? t : '#' + t)
+          .filter(t => isValidHex(t))
+          .map(t => t.toUpperCase())
+      }
+    } catch { /* fall through to token-based parsing */ }
+  }
   const tokens = raw.split(/[\s,;\n\r]+/)
   return tokens
     .map(t => t.trim())
     .filter(t => t.length > 0)
-    .map(t => (t.startsWith('#') ? t : '#' + t))
+    .map(t => t.startsWith('#') ? t : '#' + t)
     .filter(t => isValidHex(t))
     .map(t => t.toUpperCase())
 }
