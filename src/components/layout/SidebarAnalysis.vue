@@ -1,241 +1,263 @@
 <template>
   <aside class="right-sidebar">
     <div class="rs-scroll">
-      <!-- Palette Health -->
-      <div class="rs-panel">
+      <!-- Workspace label -->
+      <div v-if="workspace.activeWorkspace" class="rs-panel rs-workspace-label">
         <div class="rs-header">
-          <span class="rs-title">Palette Health</span>
-          <span class="health-score" :style="{ color: healthColor }" title="Calculated from palette issues only: -20 per critical issue, -10 per warning, -3 per info. Independent of composite scores above.">{{ healthScore }}%</span>
-        </div>
-        <div class="rs-body">
-          <div class="health-bar-track">
-            <div class="health-bar-fill" :style="{ width: healthScore + '%', background: healthColor }" />
-          </div>
+          <span class="rs-title">{{ workspace.definition?.name }} Analysis</span>
         </div>
       </div>
 
-      <!-- Composite Scores -->
-      <div class="rs-panel">
-        <div class="rs-header">
-          <span class="rs-title">Composite Scores</span>
-        </div>
-        <div class="rs-body">
-          <div class="rs-scores">
-            <div class="rs-score-row">
-              <span class="rs-score-label" title="Can this palette actually be used in UI? Checks for essential roles (background, text, primary), neutral tones, and sufficient luminance range.">UI Practicality</span>
-              <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.practicality)} 18%, transparent)` }">
-                <div class="rs-score-bar-fill practicality" :style="{ width: scores.practicality + '%' , background: scoreColor(scores.practicality) }" />
-              </div>
-              <span class="rs-score-value" :style="{ color: scoreColor(scores.practicality) }">{{ scores.practicality }}</span>
-            </div>
-            <div class="rs-score-row">
-              <span class="rs-score-label" title="How well do the colors work together? Measures average DeltaE distance and saturation variance — values too close or too far apart reduce cohesion.">Cohesion</span>
-              <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.cohesion)} 18%, transparent)` }">
-                <div class="rs-score-bar-fill cohesion" :style="{ width: scores.cohesion + '%', background: scoreColor(scores.cohesion) }" />
-              </div>
-              <span class="rs-score-value" :style="{ color: scoreColor(scores.cohesion) }">{{ scores.cohesion }}</span>
-            </div>
-            <div class="rs-score-row">
-              <span class="rs-score-label" title="Will this palette cause eye strain? Penalizes highly saturated colors, extreme luminance ranges (pure black/white), and extreme contrast ratios (>12:1 or <2:1) in approved pairings.">Fatigue Resist.</span>
-              <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.fatigue)} 18%, transparent)` }">
-                <div class="rs-score-bar-fill fatigue" :style="{ width: scores.fatigue + '%', background: scoreColor(scores.fatigue) }" />
-              </div>
-              <span class="rs-score-value" :style="{ color: scoreColor(scores.fatigue) }">{{ scores.fatigue }}</span>
+      <!-- Accessibility Repair Center -->
+      <AccessibilityRepairCenter v-if="wsId === 'accessibility'" />
+
+      <!-- Standard panels for non-accessibility workspaces -->
+      <template v-if="wsId !== 'accessibility'">
+        <!-- Palette Health -->
+        <div class="rs-panel">
+          <div class="rs-header">
+            <span class="rs-title">Palette Health</span>
+            <span class="health-score" :style="{ color: healthColor }" title="Overall palette health score based on analysis results.">{{ healthScore }}%</span>
+          </div>
+          <div class="rs-body">
+            <div class="health-bar-track">
+              <div class="health-bar-fill" :style="{ width: healthScore + '%', background: healthColor }" />
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Categorized Insights -->
-      <div v-for="group in insightGroups" :key="group.label" class="rs-panel" :class="{ collapsed: !openPanels[group.label] }">
-        <button class="rs-header" @click="toggle(group.label)">
-          <span class="rs-title">{{ group.label }}</span>
-          <span class="rs-header-right">
-            <span v-if="group.insights.length" class="rs-badge" :class="{ critical: group.insights.some(i => i.severity === 'critical') }">
-              {{ group.insights.length }}
+        <!-- Composite Scores -->
+        <div class="rs-panel">
+          <div class="rs-header">
+            <span class="rs-title">Composite Scores</span>
+          </div>
+          <div class="rs-body">
+            <div class="rs-scores">
+              <div class="rs-score-row">
+                <span class="rs-score-label" :title="practicalityHint">{{ practicalityLabel }}</span>
+                <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.practicality)} 18%, transparent)` }">
+                  <div class="rs-score-bar-fill practicality" :style="{ width: scores.practicality + '%' , background: scoreColor(scores.practicality) }" />
+                </div>
+                <span class="rs-score-value" :style="{ color: scoreColor(scores.practicality) }">{{ scores.practicality }}</span>
+              </div>
+              <div class="rs-score-row">
+                <span class="rs-score-label" :title="cohesionHint">Cohesion</span>
+                <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.cohesion)} 18%, transparent)` }">
+                  <div class="rs-score-bar-fill cohesion" :style="{ width: scores.cohesion + '%', background: scoreColor(scores.cohesion) }" />
+                </div>
+                <span class="rs-score-value" :style="{ color: scoreColor(scores.cohesion) }">{{ scores.cohesion }}</span>
+              </div>
+              <div class="rs-score-row">
+                <span class="rs-score-label" :title="fatigueHint">{{ fatigueLabel }}</span>
+                <div class="rs-score-bar-track" :style="{ background: `color-mix(in srgb, ${scoreColor(scores.fatigue)} 18%, transparent)` }">
+                  <div class="rs-score-bar-fill fatigue" :style="{ width: scores.fatigue + '%', background: scoreColor(scores.fatigue) }" />
+                </div>
+                <span class="rs-score-value" :style="{ color: scoreColor(scores.fatigue) }">{{ scores.fatigue }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categorized Insights -->
+        <div v-for="group in insightGroups" :key="group.label" class="rs-panel" :class="{ collapsed: !openPanels[group.label] }">
+          <button class="rs-header" @click="toggle(group.label)">
+            <span class="rs-title">{{ group.label }}</span>
+            <span class="rs-header-right">
+              <span v-if="group.insights.length" class="rs-badge" :class="{ critical: group.insights.some(i => i.severity === 'critical') }">
+                {{ group.insights.length }}
+              </span>
+              <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
-            <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </button>
-        <div class="rs-body">
-          <div v-for="insight in group.insights" :key="insight.id" class="rs-insight" :class="`sev-${insight.severity}`">
-            <div class="rs-insight-top">
-              <span class="rs-insight-sev-dot" />
-              <span class="rs-insight-title">{{ insight.title }}</span>
+          </button>
+          <div class="rs-body">
+            <div v-for="insight in group.insights" :key="insight.id" class="rs-insight" :class="`sev-${insight.severity}`">
+              <div class="rs-insight-top">
+                <span class="rs-insight-sev-dot" />
+                <span class="rs-insight-title">{{ insight.title }}</span>
+              </div>
+              <p class="rs-insight-desc">{{ insight.description }}</p>
             </div>
-            <p class="rs-insight-desc">{{ insight.description }}</p>
           </div>
         </div>
-      </div>
 
-      <!-- Issues -->
-      <div class="rs-panel" :class="{ collapsed: !openPanels.issues }">
-        <button class="rs-header" @click="toggle('issues')">
-          <span class="rs-title">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            Issues
-          </span>
-          <span class="rs-header-right">
-            <span class="rs-badge" :class="{ critical: criticalCount > 0 }">{{ issues.length }}</span>
-            <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </button>
-        <div class="rs-body">
-          <div v-if="issues.length === 0" class="rs-empty">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-            <span>All checks passed</span>
-          </div>
-          <div v-else class="rs-list">
-            <div v-for="issue in issues" :key="issue.id" class="rs-issue" :class="`severity-${issue.severity}`">
-              <div class="rs-issue-top">
-                <span class="rs-issue-title">{{ issue.title }}</span>
-                <span class="rs-issue-sev">{{ issue.severity === 'critical' ? '!' : '•' }}</span>
-              </div>
-              <p class="rs-issue-desc">{{ issue.description }}</p>
+        <!-- Issues -->
+        <div class="rs-panel" :class="{ collapsed: !openPanels.issues }">
+          <button class="rs-header" @click="toggle('issues')">
+            <span class="rs-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Issues
+            </span>
+            <span class="rs-header-right">
+              <span class="rs-badge" :class="{ critical: criticalCount > 0 }">{{ issues.length }}</span>
+              <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </button>
+          <div class="rs-body">
+            <div v-if="issues.length === 0" class="rs-empty">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>All checks passed</span>
             </div>
-            <!-- <button v-if="issues.length > maxVisibleIssues" class="rs-more-btn" @click="showAllIssues = !showAllIssues">
-              {{ showAllIssues ? 'Show less' : `+${issues.length - maxVisibleIssues} more` }}
-            </button> -->
+            <div v-else class="rs-list">
+              <div v-for="issue in issues" :key="issue.id" class="rs-issue" :class="`severity-${issue.severity}`">
+                <div class="rs-issue-top">
+                  <span class="rs-issue-title">{{ issue.title }}</span>
+                  <span class="rs-issue-sev">{{ issue.severity === 'critical' ? '!' : '•' }}</span>
+                </div>
+                <p class="rs-issue-desc">{{ description }}</p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Refinements -->
-      <div class="rs-panel" :class="{ collapsed: !openPanels.refinements }">
-        <button class="rs-header" @click="toggle('refinements')">
-          <span class="rs-title">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 3h.01M12 7h.01M12 11h.01M12 15h.01M12 19h.01"/>
-              <circle cx="12" cy="3" r="1" fill="currentColor"/>
-              <circle cx="12" cy="7" r="1" fill="currentColor"/>
-              <circle cx="12" cy="11" r="1" fill="currentColor"/>
-              <circle cx="12" cy="15" r="1" fill="currentColor"/>
-              <circle cx="12" cy="19" r="1" fill="currentColor"/>
-            </svg>
-            Refinements
-          </span>
-          <span class="rs-header-right">
-            <span class="rs-badge accent">{{ refinements.length }}</span>
-            <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </button>
-        <div class="rs-body">
-          <div v-if="refinements.length === 0" class="rs-empty">
-            <span>All colors well-balanced</span>
-          </div>
-          <div v-else class="rs-list">
-            <div v-for="r in refinements" :key="r.colorId" class="rs-refinement">
-              <div class="rs-ref-title">{{ r.title }}</div>
-              <p class="rs-ref-explain">{{ r.explanation }}</p>
-              <div class="rs-ref-compare">
-                <div class="rs-ref-swatch-col">
-                  <span class="rs-ref-label">Current</span>
-                  <span class="rs-ref-swatch" :style="{ background: r.currentHex }" />
-                  <span class="rs-ref-hex">{{ r.currentHex }}</span>
-                </div>
-                <svg class="rs-ref-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                </svg>
-                <div class="rs-ref-swatch-col">
-                  <span class="rs-ref-label">Refined</span>
-                  <span class="rs-ref-swatch rs-ref-swatch-refined" :style="{ background: r.suggestedHex }" />
-                  <span class="rs-ref-hex">{{ r.suggestedHex }}</span>
-                </div>
-              </div>
-              <p class="rs-ref-rationale">{{ r.rationale }}</p>
-              <div class="rs-ref-actions">
-                <button class="rs-sug-btn" @click="replaceRefinement(r)" title="Replace color">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        <!-- Refinements -->
+        <div class="rs-panel" :class="{ collapsed: !openPanels.refinements }">
+          <button class="rs-header" @click="toggle('refinements')">
+            <span class="rs-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3h.01M12 7h.01M12 11h.01M12 15h.01M12 19h.01"/>
+                <circle cx="12" cy="3" r="1" fill="currentColor"/>
+                <circle cx="12" cy="7" r="1" fill="currentColor"/>
+                <circle cx="12" cy="11" r="1" fill="currentColor"/>
+                <circle cx="12" cy="15" r="1" fill="currentColor"/>
+                <circle cx="12" cy="19" r="1" fill="currentColor"/>
+              </svg>
+              Refinements
+            </span>
+            <span class="rs-header-right">
+              <span class="rs-badge accent">{{ refinements.length }}</span>
+              <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </button>
+          <div class="rs-body">
+            <div v-if="refinements.length === 0" class="rs-empty">
+              <span>All colors well-balanced</span>
+            </div>
+            <div v-else class="rs-list">
+              <div v-for="r in refinements" :key="r.colorId" class="rs-refinement">
+                <div class="rs-ref-title">{{ r.title }}</div>
+                <p class="rs-ref-explain">{{ r.explanation }}</p>
+                <div class="rs-ref-compare">
+                  <div class="rs-ref-swatch-col">
+                    <span class="rs-ref-label">Current</span>
+                    <span class="rs-ref-swatch" :style="{ background: r.currentHex }" />
+                    <span class="rs-ref-hex">{{ r.currentHex }}</span>
+                  </div>
+                  <svg class="rs-ref-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                   </svg>
-                  Replace
-                </button>
-                <button class="rs-sug-btn" @click="shuffleRefinement(r)" title="Shuffle alternative">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
-                    <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
-                  </svg>
-                  Shuffle
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Suggestions -->
-      <div class="rs-panel" :class="{ collapsed: !openPanels.suggestions }">
-        <button class="rs-header" @click="toggle('suggestions')">
-          <span class="rs-title">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            Color Suggestions
-          </span>
-          <span class="rs-header-right">
-            <span class="rs-badge accent">{{ suggestions.length }}</span>
-            <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </button>
-        <div class="rs-body">
-          <div v-if="suggestions.length === 0" class="rs-empty">
-            <span>None needed</span>
-          </div>
-          <div v-else class="rs-list">
-            <div v-for="s in suggestions" :key="s.id" class="rs-suggestion">
-              <div class="rs-sug-info">
-                <span class="rs-sug-color" :style="{ background: s.hex }" />
-                <div class="rs-sug-text">
-                  <span class="rs-sug-title">{{ s.title }}</span>
-                  <span class="rs-sug-role">{{ s.role }}</span>
+                  <div class="rs-ref-swatch-col">
+                    <span class="rs-ref-label">Refined</span>
+                    <span class="rs-ref-swatch rs-ref-swatch-refined" :style="{ background: r.suggestedHex }" />
+                    <span class="rs-ref-hex">{{ r.suggestedHex }}</span>
+                  </div>
+                </div>
+                <p class="rs-ref-rationale">{{ r.rationale }}</p>
+                <div class="rs-ref-actions">
+                  <button class="rs-sug-btn" @click="replaceRefinement(r)" title="Replace color">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Replace
+                  </button>
+                  <button class="rs-sug-btn" @click="shuffleRefinement(r)" title="Shuffle alternative">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+                      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                    </svg>
+                    Shuffle
+                  </button>
                 </div>
               </div>
-              <div class="rs-sug-actions">
-                <button class="rs-sug-btn" @click="addSuggestion(s)" title="Add color">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <button class="rs-sug-btn" @click="shuffleSuggestion(s)" title="Regenerate">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                </button>
-              </div>
             </div>
-            <!-- <button v-if="suggestions.length > maxVisibleSuggestions" class="rs-more-btn" @click="showAllSuggestions = !showAllSuggestions">
-              {{ showAllSuggestions ? 'Show less' : `+${suggestions.length - maxVisibleSuggestions} more` }}
-            </button> -->
           </div>
         </div>
-      </div>
+
+        <!-- Suggestions -->
+        <div class="rs-panel" :class="{ collapsed: !openPanels.suggestions }">
+          <button class="rs-header" @click="toggle('suggestions')">
+            <span class="rs-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              Color Suggestions
+            </span>
+            <span class="rs-header-right">
+              <span class="rs-badge accent">{{ suggestions.length }}</span>
+              <svg class="rs-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </button>
+          <div class="rs-body">
+            <div v-if="suggestions.length === 0" class="rs-empty">
+              <span>None needed</span>
+            </div>
+            <div v-else class="rs-list">
+              <div v-for="s in suggestions" :key="s.id" class="rs-suggestion">
+                <div class="rs-sug-info">
+                  <span class="rs-sug-color" :style="{ background: s.hex }" />
+                  <div class="rs-sug-text">
+                    <span class="rs-sug-title">{{ s.title }}</span>
+                    <span class="rs-sug-role">{{ s.role }}</span>
+                  </div>
+                </div>
+                <div class="rs-sug-actions">
+                  <button class="rs-sug-btn" @click="addSuggestion(s)" title="Add color">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                  <button class="rs-sug-btn" @click="shuffleSuggestion(s)" title="Regenerate">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, shallowRef } from 'vue'
 import { usePaletteStore } from '../../stores/palette'
 import { useThemeStore } from '../../stores/theme'
-import { usePaletteAnalysis } from '../../composables/usePaletteAnalysis'
-import { useAdvancedAnalysis } from '../../composables/useAdvancedAnalysis'
-import type { Suggestion } from '../../composables/usePaletteAnalysis'
+import { useWorkspaceStore } from '../../stores/workspace'
+import { getWorkspaceAnalysis } from '../../workspaces/registry'
+import type { WorkspaceId, Suggestion } from '../../workspaces/types'
+import AccessibilityRepairCenter from './AccessibilityRepairCenter.vue'
 
 const palette = usePaletteStore()
 const themeStore = useThemeStore()
-const { issues, suggestions, healthScore, regenerateSuggestion } = usePaletteAnalysis(
-  () => palette.colors,
-  () => themeStore.isDark,
-  () => palette.contrastPairs
-)
-const { scores, insightGroups, refinements, cycleRefinement } = useAdvancedAnalysis(
-  () => palette.colors,
-  () => themeStore.isDark,
-  () => palette.contrastPairs
-)
+const workspace = useWorkspaceStore()
+
+const wsId = computed<WorkspaceId>(() => workspace.activeWorkspace || 'ui-design')
+
+const analysis = shallowRef(createAnalysis(wsId.value))
+
+watch(wsId, (id) => {
+  analysis.value = createAnalysis(id)
+})
+
+function createAnalysis(id: WorkspaceId) {
+  return getWorkspaceAnalysis(id)(
+    () => palette.colors,
+    () => themeStore.isDark,
+    () => palette.contrastPairs
+  )
+}
+
+const issues = computed(() => analysis.value?.issues.value ?? [])
+const suggestions = computed(() => analysis.value?.suggestions.value ?? [])
+const scores = computed(() => analysis.value?.scores.value ?? { practicality: 0, cohesion: 0, fatigue: 0 })
+const healthScore = computed(() => analysis.value?.healthScore.value ?? 0)
+const refinements = computed(() => analysis.value?.refinements.value ?? [])
+const insightGroups = computed(() => analysis.value?.insightGroups.value ?? [])
 
 const openPanels = ref<Record<string, boolean>>({
   issues: false,
@@ -247,7 +269,44 @@ function toggle(key: string) {
   openPanels.value[key] = !openPanels.value[key]
 }
 
-const criticalCount = computed(() => issues.value.filter(i => i.severity === 'critical').length)
+const criticalCount = computed(() => issues.value.filter((i: { severity: string }) => i.severity === 'critical').length)
+
+const practicalityLabel = computed(() => {
+  const map: Record<string, string> = {
+    'ui-design': 'UI Practicality',
+    'data-viz': 'Data Practicality',
+    'accessibility': 'Accessibility',
+    'branding': 'Brand Cohesion',
+  }
+  return map[wsId.value] || 'Practicality'
+})
+
+const practicalityHint = computed(() => {
+  const map: Record<string, string> = {
+    'ui-design': 'Can this palette actually be used in UI? Checks for essential roles, neutral tones, and sufficient luminance range.',
+    'data-viz': 'Can these colors distinguish categories? Penalizes similar hues and color blindness conflicts.',
+    'accessibility': 'How accessible is this palette? Based on WCAG failures, color blindness safety, and contrast fatigue.',
+    'branding': 'How strong is the brand identity? Measures emotional clarity and saturation consistency.',
+  }
+  return map[wsId.value] || ''
+})
+
+const fatigueLabel = computed(() => {
+  return wsId.value === 'accessibility' ? 'Contrast Safety' : 'Fatigue Resist.'
+})
+
+const fatigueHint = computed(() => {
+  const map: Record<string, string> = {
+    'ui-design': 'Will this palette cause eye strain? Penalizes highly saturated colors, extreme luminance ranges, and extreme contrast ratios.',
+    'data-viz': 'Are these colors comfortable for extended viewing? Penalizes high saturation and extreme luminance differences.',
+    'accessibility': 'How safe are contrast levels? Evaluates WCAG, APCA, and color blindness simulation results.',
+    'branding': 'Not applicable for branding — always 100.',
+  }
+  return map[wsId.value] || ''
+})
+
+const cohesionHint = 'How well do the colors work together? Measures color distance and variance.'
+
 const healthColor = computed(() => {
   if (healthScore.value >= 80) return 'var(--success)'
   if (healthScore.value >= 60) return 'var(--warning)'
@@ -267,7 +326,7 @@ function addSuggestion(s: Suggestion) {
 }
 
 function shuffleSuggestion(s: Suggestion) {
-  regenerateSuggestion(s.id)
+  analysis.value?.regenerateSuggestion(s.id)
 }
 
 function replaceRefinement(r: { colorId: string, suggestedHex: string }) {
@@ -275,7 +334,7 @@ function replaceRefinement(r: { colorId: string, suggestedHex: string }) {
 }
 
 function shuffleRefinement(r: { colorId: string }) {
-  cycleRefinement(r.colorId)
+  analysis.value?.cycleRefinement(r.colorId)
 }
 
 watch(insightGroups, (groups) => {

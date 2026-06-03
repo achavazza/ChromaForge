@@ -3,7 +3,7 @@
     <div class="step-header">
       <div>
         <h1 class="step-title">Live Preview & Export</h1>
-        <p class="step-subtitle">See your palette in action across real UI patterns, then export to your preferred format.</p>
+        <p class="step-subtitle">{{ subtitle }}</p>
       </div>
       <div class="export-actions">
         <select class="role-select export-format-select" v-model="exportFormat" id="export-format-select">
@@ -30,15 +30,15 @@
       </div>
     </div>
 
-    <!-- Before/After Slider -->
-    <div class="section-block">
+    <!-- Before/After Slider (UI Design only) -->
+    <div v-if="workspace.id === 'ui-design'" class="section-block">
       <div class="section-label">Before / After Comparison</div>
       <div class="split-container" ref="splitRef" @mousemove="onSliderMove" @mouseup="stopSlider" @mouseleave="stopSlider">
         <div class="split-before" :style="{ clipPath: `inset(0 ${100 - splitPos}% 0 0)` }">
-          <PalettePreviewUI :colors="palette.originalColors" label="Original" />
+          <WorkspacePreview :colors="palette.originalColors" label="Original" />
         </div>
         <div class="split-after">
-          <PalettePreviewUI :colors="palette.colors" label="Refined" />
+          <WorkspacePreview :colors="palette.colors" label="Refined" />
         </div>
         <div
           class="split-handle"
@@ -58,10 +58,10 @@
       </div>
     </div>
 
-    <!-- UI Preview -->
+    <!-- Workspace Preview -->
     <div class="section-block">
-      <div class="section-label">UI Component Preview</div>
-      <PalettePreviewUI :colors="palette.colors" :full="true" />
+      <div class="section-label">{{ previewLabel }}</div>
+      <WorkspacePreview :colors="palette.colors" :full="true" />
     </div>
 
     <!-- Export Code -->
@@ -88,12 +88,38 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { usePaletteStore } from '../../stores/palette'
+import { useWorkspaceStore } from '../../stores/workspace'
 import { useExport } from '../../composables/useExport'
 import type { ExportFormat } from '../../composables/useExport'
-import PalettePreviewUI from '../ui/PalettePreviewUI.vue'
+import WorkspacePreview from '../ui/previews/WorkspacePreview.vue'
 
 const palette = usePaletteStore()
+const workspace = useWorkspaceStore()
 const { generate, download, copyToClipboard, formatExtensions } = useExport()
+
+const ws = computed(() => workspace.definition)
+
+const previewLabel = computed(() => {
+  if (!ws.value) return 'Live Preview'
+  const labels: Record<string, string> = {
+    'ui-design': 'UI Component Preview',
+    'data-viz': 'Chart & Visualization Preview',
+    'accessibility': 'Accessibility Report Preview',
+    'branding': 'Brand & Marketing Preview',
+  }
+  return labels[ws.value.id] || 'Live Preview'
+})
+
+const subtitle = computed(() => {
+  if (!ws.value) return 'See your color palette in action.'
+  const subs: Record<string, string> = {
+    'ui-design': 'See your palette in action across real UI patterns, then export to your preferred format.',
+    'data-viz': 'Preview your palette as charts and data visualizations, then export as design tokens.',
+    'accessibility': 'Review accessibility simulations and contrast reports, then export your token set.',
+    'branding': 'Preview your palette across brand mockups and marketing materials, then export your tokens.',
+  }
+  return subs[ws.value.id] || 'Preview your palette and export to your preferred format.'
+})
 
 const exportFormat = ref<ExportFormat>('css')
 const copied = ref(false)

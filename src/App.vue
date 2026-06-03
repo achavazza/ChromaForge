@@ -5,10 +5,11 @@
       <WizardHeader />
       <div class="step-container">
         <Transition name="step" mode="out-in">
-          <Step1PaletteBuilder v-if="wizard.currentStep === 1" key="step1" />
-          <Step4Naming v-else-if="wizard.currentStep === 2" key="step2" />
-          <Step3Contrast v-else-if="wizard.currentStep === 3" key="step3" />
-          <Step5Export v-else-if="wizard.currentStep === 4" key="step4" />
+          <PaletteBuilder v-if="wizard.currentStep === 1" key="step1" />
+          <WorkspaceSelect v-else-if="wizard.currentStep === 2" key="step2" />
+          <NamingTokens v-else-if="wizard.currentStep === 3" key="step3" />
+          <ContrastWcag v-else-if="wizard.currentStep === 4" key="step4" />
+          <PreviewExport v-else-if="wizard.currentStep === 5" key="step5" />
         </Transition>
       </div>
     </main>
@@ -28,10 +29,11 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 import WizardHeader from './components/layout/WizardHeader.vue'
 import GlobalPaletteBar from './components/layout/GlobalPaletteBar.vue'
 import SidebarAnalysis from './components/layout/SidebarAnalysis.vue'
-import Step1PaletteBuilder from './components/steps/Step1PaletteBuilder.vue'
-import Step3Contrast from './components/steps/Step3Contrast.vue'
-import Step4Naming from './components/steps/Step4Naming.vue'
-import Step5Export from './components/steps/Step5Export.vue'
+import PaletteBuilder from './components/steps/PaletteBuilder.vue'
+import WorkspaceSelect from './components/steps/WorkspaceSelect.vue'
+import ContrastWcag from './components/steps/ContrastWcag.vue'
+import NamingTokens from './components/steps/NamingTokens.vue'
+import PreviewExport from './components/steps/PreviewExport.vue'
 
 const themeStore = useThemeStore()
 const wizard = useWizardStore()
@@ -58,7 +60,7 @@ watch(() => wizard.currentStep, (step, prevStep) => {
     palette.snapshotOriginal()
   }
     // Auto-assign roles when entering Contrast & WCAG
-  if (step === 3 && prevStep !== 3) {
+  if (step === 4 && prevStep !== 4) {
     autoAssignRoles()
   }
 })
