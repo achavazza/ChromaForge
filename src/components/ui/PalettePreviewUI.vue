@@ -180,7 +180,26 @@
         <span class="preview-badge error">Archived</span>
         <span class="preview-badge muted">Draft</span>
       </div>
+
     </template>
+  </div>
+
+  <!-- Palette Colors Card (separate from UI preview) -->
+  <div class="palette-colors-card">
+    <div class="palette-colors-title">Palette Colors</div>
+    <div class="palette-colors-row">
+      <div
+        v-for="c in colors"
+        :key="c.id"
+        class="palette-color-col"
+        :style="{ background: c.hex, '--text-on-col': getBestTextColor(c.hex) }"
+        @click="copyColor(c.hex)"
+        :title="'Copy ' + c.hex"
+      >
+        <span class="palette-color-label">{{ c.hex.toUpperCase() }}</span>
+        <span class="palette-color-name">{{ c.name || '—' }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -188,6 +207,7 @@
 import { computed } from 'vue'
 import type { ColorEntry, SemanticRole } from '../../stores/palette'
 import { useThemeStore } from '../../stores/theme'
+import { getBestTextColor } from '../../composables/useColorUtils'
 
 interface Props {
   colors: ColorEntry[]
@@ -233,6 +253,10 @@ const cssVars = computed(() => {
     '--p-muted': muted,
   }
 })
+
+function copyColor(hex: string) {
+  navigator.clipboard.writeText(hex.toUpperCase())
+}
 
 const previewCards = [
   { title: 'Revenue', value: '$48,295', badge: '+12%', badgeType: 'success', iconBg: 'var(--p-primary)', iconColor: 'white', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
@@ -712,4 +736,71 @@ const previewCards = [
 .preview-badge.warning { background: color-mix(in srgb, var(--p-warning) 15%, transparent); color: var(--p-warning); }
 .preview-badge.error { background: color-mix(in srgb, var(--p-error) 15%, transparent); color: var(--p-error); }
 .preview-badge.muted { background: color-mix(in srgb, var(--p-muted) 15%, transparent); color: var(--p-text-2); }
+
+/* Palette Colors Card (separate from UI preview) */
+.palette-colors-card {
+  padding: 16px 0 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  margin-top: 16px;
+}
+
+.palette-colors-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+  padding: 0 24px;
+}
+
+.palette-colors-row {
+  display: flex;
+  width: 100%;
+}
+
+.palette-color-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  height: 400px;
+  cursor: pointer;
+  padding: 10px;
+  min-width: 0;
+  transition: filter 0.15s;
+}
+
+.palette-color-col:hover {
+  filter: brightness(1.08);
+}
+
+.palette-color-label {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-on-col);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.palette-color-name {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-on-col);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  margin: 2px 0 4px;
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
 </style>

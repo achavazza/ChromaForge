@@ -3,11 +3,7 @@
     <!-- Logo -->
     <div class="sidebar-logo">
       <div class="logo-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle cx="8" cy="8" r="5" fill="#6366f1" opacity="0.9"/>
-          <circle cx="16" cy="8" r="5" fill="#818cf8" opacity="0.7"/>
-          <circle cx="12" cy="15" r="5" fill="#a5b4fc" opacity="0.6"/>
-        </svg>
+        <img src="/favicon.svg" width="22" height="22" alt="ChromaForge" />
       </div>
       <div class="logo-text">
         <span class="logo-name">ChromaForge</span>
